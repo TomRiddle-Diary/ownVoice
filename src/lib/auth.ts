@@ -20,12 +20,20 @@ export const authOptions: NextAuthOptions = {
           where: { email: credentials.email },
         });
 
-        if (!user) {
+        if (!user || !user.password) {
           throw new Error("User not found");
         }
 
-        // For demo purposes, we'll skip password validation
-        // In production, you'd compare hashed passwords
+        // Verify password
+        const isPasswordValid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
+
+        if (!isPasswordValid) {
+          throw new Error("Invalid password");
+        }
+
         return {
           id: user.id,
           email: user.email,
