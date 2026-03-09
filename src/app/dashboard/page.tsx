@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSession, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,8 +18,62 @@ interface Post {
 }
 
 export default function DashboardPage() {
-  const [posts, setPosts] = useState<any[]>([]);
+  const { data: session, status } = useSession();
+  const router = useRouter();
+  const [posts, setPosts] = useState<Post[]>([]);
   const [showNewPost, setShowNewPost] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+
+  const createProject = () => {
+    if (!newTitle.trim() || !newCategory) {
+      alert("タイトルとカテゴリを入力してください");
+      return;
+    }
+
+    const newPost: Post = {
+      id: Date.now().toString(),
+      title: newTitle,
+      category: newCategory,
+      createdAt: new Date(),
+    };
+
+    setPosts([newPost, ...posts]);
+    
+    // エディターページに遷移
+    router.push(`/editor/${newPost.id}`);
+  };
+
+  const getCategoryLabel = (category: string) => {
+    const labels: { [key: string]: string } = {
+      blog: "技術ブログ",
+      proposal: "提案書",
+      "self-pr": "自己PR",
+      essay: "エッセイ",
+    };
+    return labels[category] || category;
+  };
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/signin");
+    }
+  }, [status, router]);
+
+  if (status === "loading") {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900 mx-auto"></div>
+          <p className="mt-4 text-gray-600">読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!session) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
