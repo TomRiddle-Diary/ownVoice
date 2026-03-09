@@ -1,6 +1,6 @@
-# WriteCraft - 論理的ライティングスキル向上プラットフォーム
+# own voice - 論理的ライティングスキル向上プラットフォーム
 
-WriteCraftは、AI に文章を書いてもらうのではなく、**あなた自身の論理的な文章力を鍛える**ためのSaaSアプリケーションです。PREP法（Point、Reason、Example、Point）という構造化された手法を使って、説得力のある文章を書けるようになります。
+own voiceは、AI に文章を書いてもらうのではなく、**あなた自身の論理的な文章力を鍛える**ためのSaaSアプリケーションです。PREP法（Point、Reason、Example、Point）という構造化された手法を使って、説得力のある文章を書けるようになります。
 
 ## 📚 目次
 
@@ -164,7 +164,7 @@ P: このように、Next.jsは開発者にとって最良の選択です
    Copy `.env.example` to `.env` and fill in your credentials:
    ```bash
    # Database
-   DATABASE_URL="postgresql://user:password@localhost:5432/writecraft?schema=public"
+   DATABASE_URL="postgresql://user:password@localhost:5432/ownvoice?schema=public"
 
    # NextAuth
    NEXTAUTH_URL="http://localhost:3000"
@@ -203,7 +203,7 @@ P: このように、Next.jsは開発者にとって最良の選択です
 このアプリのファイル構造と、各ファイルが何をしているかを説明します。
 
 ```
-writecraft/
+ownvoice/
 ├── src/                              # ソースコード（アプリの本体）
 │   ├── app/                          # Next.js App Router（ページとAPI）
 │   │   ├── api/                      # バックエンドAPI（サーバー側の処理）

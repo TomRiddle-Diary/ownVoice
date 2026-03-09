@@ -25,19 +25,19 @@ interface PrepStructure {
 }
 
 const PREP_SECTIONS = [
-  { id: "point1", label: "Point (Opening)", color: "bg-blue-100 border-blue-300" },
-  { id: "reason", label: "Reason (Why)", color: "bg-green-100 border-green-300" },
-  { id: "example", label: "Example (Evidence)", color: "bg-yellow-100 border-yellow-300" },
-  { id: "point2", label: "Point (Closing)", color: "bg-purple-100 border-purple-300" },
+  { id: "point1", label: "Point (結論・開始)", color: "bg-blue-100 border-blue-300" },
+  { id: "reason", label: "Reason (理由)", color: "bg-green-100 border-green-300" },
+  { id: "example", label: "Example (具体例)", color: "bg-yellow-100 border-yellow-300" },
+  { id: "point2", label: "Point (結論・終わり)", color: "bg-purple-100 border-purple-300" },
 ];
 
 export default function EditorPage() {
   const [bullets, setBullets] = useState<Bullet[]>([
-    { id: "1", text: "AI technology is transforming software development" },
-    { id: "2", text: "Developers can focus on creative problem-solving" },
-    { id: "3", text: "GitHub Copilot assists with code suggestions" },
-    { id: "4", text: "This leads to increased productivity and innovation" },
-    { id: "5", text: "Teams can build better products faster" },
+    { id: "1", text: "AI技術がソフトウェア開発を変革しています" },
+    { id: "2", text: "開発者は創造的な問題解決に集中できます" },
+    { id: "3", text: "GitHub Copilotがコード提案でサポートします" },
+    { id: "4", text: "これにより生産性とイノベーションが向上します" },
+    { id: "5", text: "チームはより良い製品をより速く構築できます" },
   ]);
   const [newBulletText, setNewBulletText] = useState("");
   const [prepStructure, setPrepStructure] = useState<PrepStructure>({
@@ -139,7 +139,7 @@ export default function EditorPage() {
       setFeedback(data.feedback);
     } catch (error) {
       console.error("Error getting feedback:", error);
-      setFeedback("Error getting feedback. Please try again.");
+      setFeedback("フィードバックの取得に失敗しました。もう一度試してください。");
     } finally {
       setIsLoadingFeedback(false);
     }
@@ -161,7 +161,7 @@ export default function EditorPage() {
       setShowComparison(true);
     } catch (error) {
       console.error("Error getting model text:", error);
-      setModelText("Error generating model text. Please try again.");
+      setModelText("理想的なテキストの生成に失敗しました。もう一度試してください。");
     } finally {
       setIsLoadingModel(false);
     }
@@ -177,10 +177,10 @@ export default function EditorPage() {
                 <ArrowLeft className="w-4 h-4" />
               </Link>
             </Button>
-            <h1 className="text-xl font-bold text-gray-900">Tech Blog Post</h1>
-            <Badge>Draft</Badge>
+            <h1 className="text-xl font-bold text-gray-900">技術ブログ記事</h1>
+            <Badge>下書き</Badge>
           </div>
-          <Button variant="outline">Save</Button>
+          <Button variant="outline">保存</Button>
         </div>
       </header>
 
@@ -191,12 +191,12 @@ export default function EditorPage() {
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">💡 Your Ideas (Bullet Points)</CardTitle>
+                  <CardTitle className="text-lg">💡 アイデア（メモ）</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="flex gap-2 mb-4">
                     <Input
-                      placeholder="Add a new bullet point..."
+                      placeholder="新しいメモを追加..."
                       value={newBulletText}
                       onChange={(e) => setNewBulletText(e.target.value)}
                       onKeyPress={(e) => e.key === "Enter" && addBullet()}
@@ -244,9 +244,9 @@ export default function EditorPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">📋 PREP Structure</CardTitle>
+                  <CardTitle className="text-lg">📋 PREP構造</CardTitle>
                   <p className="text-sm text-gray-600">
-                    Drag bullets from above into the PREP framework
+                    上のメモをPREPフレームワークにドラッグ＆ドロップします
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -268,7 +268,7 @@ export default function EditorPage() {
                           >
                             {prepStructure[section.id as keyof PrepStructure].length === 0 ? (
                               <p className="text-sm text-gray-500 text-center py-4">
-                                Drop bullets here
+                                メモをここにドロップ
                               </p>
                             ) : (
                               <div className="space-y-2">
@@ -309,14 +309,14 @@ export default function EditorPage() {
             <div className="space-y-6">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">✍️ Your Draft</CardTitle>
+                  <CardTitle className="text-lg">✍️ 下書き</CardTitle>
                   <p className="text-sm text-gray-600">
-                    Write your content based on the PREP structure
+                    PREP構造を基に文章を書きます
                   </p>
                 </CardHeader>
                 <CardContent>
                   <Textarea
-                    placeholder="Start writing your draft here..."
+                    placeholder="ここに下書きを書き始めます..."
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     className="min-h-[400px] mb-4"
@@ -324,14 +324,14 @@ export default function EditorPage() {
                   <div className="flex gap-2">
                     <Button onClick={getFeedback} disabled={!content || isLoadingFeedback}>
                       <Sparkles className="w-4 h-4 mr-2" />
-                      {isLoadingFeedback ? "Analyzing..." : "Get AI Feedback"}
+                      {isLoadingFeedback ? "分析中..." : "AIフィードバックを取得"}
                     </Button>
                     <Button
                       onClick={getModelText}
                       disabled={isLoadingModel}
                       variant="outline"
                     >
-                      {isLoadingModel ? "Generating..." : "Compare with Ideal"}
+                      {isLoadingModel ? "生成中..." : "理想版と比較"}
                     </Button>
                   </div>
                 </CardContent>
@@ -340,7 +340,7 @@ export default function EditorPage() {
               {(isLoadingFeedback || feedback) && (
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">🤖 AI Feedback</CardTitle>
+                    <CardTitle className="text-lg">🤖 AIフィードバック</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {isLoadingFeedback ? (
@@ -365,9 +365,9 @@ export default function EditorPage() {
             <div className="mt-8">
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-xl">📚 Comparative Learning</CardTitle>
+                  <CardTitle className="text-xl">📚 比較学習</CardTitle>
                   <p className="text-sm text-gray-600">
-                    Compare your draft (left) with an ideal version (right) to learn from the differences
+                    あなたの下書き（左）と理想版（右）を比較して、違いから学びます
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -380,13 +380,13 @@ export default function EditorPage() {
                   ) : (
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
-                        <h3 className="text-lg font-semibold mb-3 text-gray-700">Your Draft</h3>
+                        <h3 className="text-lg font-semibold mb-3 text-gray-700">あなたの下書き</h3>
                         <div className="p-4 bg-gray-50 rounded-lg border">
-                          <p className="text-sm whitespace-pre-wrap">{content || "No content yet..."}</p>
+                          <p className="text-sm whitespace-pre-wrap">{content || "まだ内容がありません..."}</p>
                         </div>
                       </div>
                       <div>
-                        <h3 className="text-lg font-semibold mb-3 text-blue-700">Ideal Version</h3>
+                        <h3 className="text-lg font-semibold mb-3 text-blue-700">理想的なバージョン</h3>
                         <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
                           <p className="text-sm whitespace-pre-wrap">{modelText}</p>
                         </div>

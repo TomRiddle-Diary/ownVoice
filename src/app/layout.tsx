@@ -7,8 +7,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "WriteCraft - Improve Your Logical Writing Skills",
-  description: "Master the PREP method and become a better writer with AI-powered feedback",
+  title: "own voice - 論理的ライティングスキル向上プラットフォーム",
+  description: "PREP法をマスターし、AIフィードバックでより良いライターになりましょう",
 };
 
 export default function RootLayout({
@@ -17,7 +17,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="ja">
       <body className={inter.className}>
         {children}
       </body>

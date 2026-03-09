@@ -17,66 +17,66 @@ export default function DashboardPage() {
       <header className="bg-white border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="text-2xl font-bold text-gray-900">
-            WriteCraft
+            own voice
           </Link>
-          <Button variant="outline">Sign Out</Button>
+          <Button variant="outline">ログアウト</Button>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">My Projects</h1>
+            <h1 className="text-3xl font-bold text-gray-900">マイプロジェクト</h1>
             <p className="text-gray-600 mt-1">
-              Create and manage your writing projects
+              文章プロジェクトを作成・管理します
             </p>
           </div>
           <Button onClick={() => setShowNewPost(true)}>
             <PlusCircle className="w-4 h-4 mr-2" />
-            New Project
+            新規プロジェクト
           </Button>
         </div>
 
         {showNewPost && (
           <Card className="mb-8">
             <CardHeader>
-              <CardTitle>Create New Project</CardTitle>
+              <CardTitle>新規プロジェクト作成</CardTitle>
               <CardDescription>
-                Start a new writing project with the PREP method
+                PREP法を使った新しい文章プロジェクトを開始します
               </CardDescription>
             </CardHeader>
             <CardContent>
               <form className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Project Title
+                    プロジェクトタイトル
                   </label>
-                  <Input placeholder="e.g., Tech Blog Post" />
+                  <Input placeholder="例：技術ブログ記事" />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Category
+                    カテゴリ
                   </label>
                   <Select>
                     <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
+                      <SelectValue placeholder="カテゴリを選択" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="blog">Tech Blog</SelectItem>
-                      <SelectItem value="proposal">Proposal</SelectItem>
-                      <SelectItem value="self-pr">Self-PR</SelectItem>
-                      <SelectItem value="essay">Essay</SelectItem>
+                      <SelectItem value="blog">技術ブログ</SelectItem>
+                      <SelectItem value="proposal">提案書</SelectItem>
+                      <SelectItem value="self-pr">自己PR</SelectItem>
+                      <SelectItem value="essay">エッセイ</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex gap-2">
-                  <Button type="button">Create & Start</Button>
+                  <Button type="button">作成して開始</Button>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setShowNewPost(false)}
                   >
-                    Cancel
+                    キャンセル
                   </Button>
                 </div>
               </form>
@@ -87,15 +87,15 @@ export default function DashboardPage() {
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
-              <CardTitle>Sample Project</CardTitle>
-              <CardDescription>Tech Blog • Created 2 days ago</CardDescription>
+              <CardTitle>サンプルプロジェクト</CardTitle>
+              <CardDescription>技術ブログ • 2日前に作成</CardDescription>
             </CardHeader>
             <CardContent>
               <p className="text-sm text-gray-600 mb-4">
-                A sample project to demonstrate the PREP method in action...
+                PREP法の実践を示すサンプルプロジェクトです...
               </p>
               <Button variant="outline" className="w-full" asChild>
-                <Link href="/editor/sample">Open Project</Link>
+                <Link href="/editor/sample">プロジェクトを開く</Link>
               </Button>
             </CardContent>
           </Card>
