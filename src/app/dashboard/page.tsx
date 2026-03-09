@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,9 +9,48 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import Link from "next/link";
 import { PlusCircle } from "lucide-react";
 
+interface Post {
+  id: string;
+  title: string;
+  category: string;
+  createdAt: Date;
+}
+
 export default function DashboardPage() {
-  const [posts, setPosts] = useState<any[]>([]);
+  const router = useRouter();
+  const [posts, setPosts] = useState<Post[]>([]);
   const [showNewPost, setShowNewPost] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [newCategory, setNewCategory] = useState("");
+
+  const createProject = () => {
+    if (!newTitle.trim() || !newCategory) {
+      alert("タイトルとカテゴリを入力してください");
+      return;
+    }
+
+    const newPost: Post = {
+      id: Date.now().toString(),
+      title: newTitle,
+      category: newCategory,
+      createdAt: new Date(),
+    };
+
+    setPosts([newPost, ...posts]);
+    
+    // エディターページに遷移
+    router.push(`/editor/${newPost.id}`);
+  };
+
+  const getCategoryLabel = (category: string) => {
+    const labels: { [key: string]: string } = {
+      blog: "技術ブログ",
+      proposal: "提案書",
+      "self-pr": "自己PR",
+      essay: "エッセイ",
+    };
+    return labels[category] || category;
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -46,18 +86,22 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form className="space-y-4">
+              <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); createProject(); }}>
                 <div>
                   <label className="block text-sm font-medium mb-2">
                     プロジェクトタイトル
                   </label>
-                  <Input placeholder="例：技術ブログ記事" />
+                  <Input 
+                    placeholder="例：技術ブログ記事" 
+                    value={newTitle}
+                    onChange={(e) => setNewTitle(e.target.value)}
+                  />
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">
                     カテゴリ
                   </label>
-                  <Select>
+                  <Select value={newCategory} onValueChange={setNewCategory}>
                     <SelectTrigger>
                       <SelectValue placeholder="カテゴリを選択" />
                     </SelectTrigger>
@@ -70,11 +114,15 @@ export default function DashboardPage() {
                   </Select>
                 </div>
                 <div className="flex gap-2">
-                  <Button type="button">作成して開始</Button>
+                  <Button type="button" onClick={createProject}>作成して開始</Button>
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => setShowNewPost(false)}
+                    onClick={() => {
+                      setShowNewPost(false);
+                      setNewTitle("");
+                      setNewCategory("");
+                    }}
                   >
                     キャンセル
                   </Button>
@@ -84,7 +132,34 @@ export default function DashboardPage() {
           </Card>
         )}
 
+        {posts.length === 0 && !showNewPost && (
+          <div className="text-center py-12">
+            <p className="text-gray-500 mb-4">まだプロジェクトがありません</p>
+            <p className="text-sm text-gray-400 mb-6">
+              「新規プロジェクト」ボタンから最初のプロジェクトを作成しましょう
+            </p>
+          </div>
+        )}
+
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {/* 作成したプロジェクト一覧 */}
+          {posts.map((post) => (
+            <Card key={post.id} className="hover:shadow-lg transition-shadow">
+              <CardHeader>
+                <CardTitle>{post.title}</CardTitle>
+                <CardDescription>
+                  {getCategoryLabel(post.category)} • {new Date(post.createdAt).toLocaleDateString('ja-JP')}に作成
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button variant="outline" className="w-full" asChild>
+                  <Link href={`/editor/${post.id}`}>プロジェクトを開く</Link>
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+
+          {/* サンプルプロジェクト */}
           <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle>サンプルプロジェクト</CardTitle>
