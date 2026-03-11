@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,27 +12,24 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { ArrowLeft, GripVertical, Plus, Trash2, Sparkles } from "lucide-react";
+import { getFormatByTargetLength, type FormatSection, type WritingFormat } from "@/lib/format-utils";
 
 interface Bullet {
   id: string;
   text: string;
 }
 
-interface PrepStructure {
-  point1: Bullet[];
-  reason: Bullet[];
-  example: Bullet[];
-  point2: Bullet[];
-}
-
-const PREP_SECTIONS = [
-  { id: "point1", label: "Point (結論・開始)", color: "bg-blue-100 border-blue-300" },
-  { id: "reason", label: "Reason (理由)", color: "bg-green-100 border-green-300" },
-  { id: "example", label: "Example (具体例)", color: "bg-yellow-100 border-yellow-300" },
-  { id: "point2", label: "Point (結論・終わり)", color: "bg-purple-100 border-purple-300" },
-];
+// 動的な構造に対応
+type DynamicStructure = { [sectionId: string]: Bullet[] };
 
 export default function EditorPage() {
+  const searchParams = useSearchParams();
+  const targetLength = Number(searchParams.get("targetLength")) || 800; // デフォルト800字
+  
+  // 目標文字数に基づいてフォーマットを決定
+  const [format, setFormat] = useState<WritingFormat>(getFormatByTargetLength(targetLength));
+  const [sections, setSections] = useState<FormatSection[]>(format.sections);
+
   const [bullets, setBullets] = useState<Bullet[]>([
     { id: "1", text: "AI技術がソフトウェア開発を変革しています" },
     { id: "2", text: "開発者は創造的な問題解決に集中できます" },
@@ -40,11 +38,13 @@ export default function EditorPage() {
     { id: "5", text: "チームはより良い製品をより速く構築できます" },
   ]);
   const [newBulletText, setNewBulletText] = useState("");
-  const [prepStructure, setPrepStructure] = useState<PrepStructure>({
-    point1: [],
-    reason: [],
-    example: [],
-    point2: [],
+  
+  const [dynamicStructure, setDynamicStructure] = useState<DynamicStructure>(() => {
+    const structure: DynamicStructure = {};
+    format.sections.forEach(section => {
+      structure[section.id] = [];
+    });
+    return structure;
   });
   const [content, setContent] = useState("");
   const [feedback, setFeedback] = useState("");
@@ -52,6 +52,17 @@ export default function EditorPage() {
   const [modelText, setModelText] = useState("");
   const [isLoadingModel, setIsLoadingModel] = useState(false);
   const [showComparison, setShowComparison] = useState(false);
+
+  // sectionsが変更されたときにdynamicStructureを再初期化
+  useEffect(() => {
+    const structure: DynamicStructure = {};
+    sections.forEach(section => {
+      // 既存のデータを保持しつつ、新しいセクションを追加
+      structure[section.id] = dynamicStructure[section.id] || [];
+    });
+    setDynamicStructure(structure);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sections]);
 
   const addBullet = () => {
     if (newBulletText.trim()) {
@@ -78,11 +89,11 @@ export default function EditorPage() {
       const sourceList =
         source.droppableId === "bullets"
           ? bullets
-          : prepStructure[source.droppableId as keyof PrepStructure];
+          : dynamicStructure[source.droppableId];
       const destList =
         destination.droppableId === "bullets"
           ? bullets
-          : prepStructure[destination.droppableId as keyof PrepStructure];
+          : dynamicStructure[destination.droppableId];
 
       const [removed] = sourceList.splice(source.index, 1);
       destList.splice(destination.index, 0, removed);
@@ -90,8 +101,8 @@ export default function EditorPage() {
       if (source.droppableId === "bullets") {
         setBullets([...sourceList]);
       } else {
-        setPrepStructure({
-          ...prepStructure,
+        setDynamicStructure({
+          ...dynamicStructure,
           [source.droppableId]: sourceList,
         });
       }
@@ -99,8 +110,8 @@ export default function EditorPage() {
       if (destination.droppableId === "bullets") {
         setBullets([...destList]);
       } else {
-        setPrepStructure({
-          ...prepStructure,
+        setDynamicStructure({
+          ...dynamicStructure,
           [destination.droppableId]: destList,
         });
       }
@@ -109,15 +120,15 @@ export default function EditorPage() {
       const list =
         source.droppableId === "bullets"
           ? bullets
-          : prepStructure[source.droppableId as keyof PrepStructure];
+          : dynamicStructure[source.droppableId];
       const [removed] = list.splice(source.index, 1);
       list.splice(destination.index, 0, removed);
 
       if (source.droppableId === "bullets") {
         setBullets([...list]);
       } else {
-        setPrepStructure({
-          ...prepStructure,
+        setDynamicStructure({
+          ...dynamicStructure,
           [source.droppableId]: list,
         });
       }
@@ -132,7 +143,8 @@ export default function EditorPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content,
-          structure: prepStructure,
+          structure: dynamicStructure,
+          format: format.name,
         }),
       });
       const data = await response.json();
@@ -152,8 +164,9 @@ export default function EditorPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          structure: prepStructure,
+          structure: dynamicStructure,
           category: "Tech Blog",
+          format: format.name,
         }),
       });
       const data = await response.json();
@@ -177,7 +190,12 @@ export default function EditorPage() {
                 <ArrowLeft className="w-4 h-4" />
               </Link>
             </Button>
-            <h1 className="text-xl font-bold text-gray-900">技術ブログ記事</h1>
+            <div>
+              <h1 className="text-xl font-bold text-gray-900">技術ブログ記事</h1>
+              <p className="text-xs text-gray-500">
+                {format.name} • 目標{targetLength}字
+              </p>
+            </div>
             <Badge>下書き</Badge>
           </div>
           <Button variant="outline">保存</Button>
@@ -186,6 +204,26 @@ export default function EditorPage() {
 
       <DragDropContext onDragEnd={onDragEnd}>
         <div className="container mx-auto px-4 py-8">
+          {/* フォーマット説明 */}
+          <Card className="mb-6 bg-gradient-to-r from-blue-50 to-purple-50">
+            <CardContent className="pt-6">
+              <div className="flex items-start gap-3">
+                <div className="text-3xl">📝</div>
+                <div className="flex-1">
+                  <h3 className="font-semibold text-gray-900 mb-1">{format.name}</h3>
+                  <p className="text-sm text-gray-600 mb-2">{format.description}</p>
+                  <div className="flex flex-wrap gap-2">
+                    {sections.map((section, index) => (
+                      <Badge key={section.id} variant="outline" className="text-xs">
+                        {index + 1}. {section.label} ({section.recommendedLength}字)
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid lg:grid-cols-2 gap-8">
             {/* Left Panel: Bullets & Structure */}
             <div className="space-y-6">
@@ -199,9 +237,14 @@ export default function EditorPage() {
                       placeholder="新しいメモを追加..."
                       value={newBulletText}
                       onChange={(e) => setNewBulletText(e.target.value)}
-                      onKeyPress={(e) => e.key === "Enter" && addBullet()}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addBullet();
+                        }
+                      }}
                     />
-                    <Button onClick={addBullet} size="icon">
+                    <Button onClick={addBullet} size="icon" type="button">
                       <Plus className="w-4 h-4" />
                     </Button>
                   </div>
@@ -244,17 +287,23 @@ export default function EditorPage() {
 
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">📋 PREP構造</CardTitle>
+                  <CardTitle className="text-lg">📋 文章構造</CardTitle>
                   <p className="text-sm text-gray-600">
-                    上のメモをPREPフレームワークにドラッグ＆ドロップします
+                    上のメモを各セクションにドラッグ＆ドロップします
                   </p>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {PREP_SECTIONS.map((section) => (
+                  {sections.map((section) => (
                     <div key={section.id}>
                       <label className="block text-sm font-medium mb-2">
                         {section.label}
+                        <span className="text-xs text-gray-500 ml-2">
+                          （推奨: {section.recommendedLength}字）
+                        </span>
                       </label>
+                      {section.description && (
+                        <p className="text-xs text-gray-500 mb-2">{section.description}</p>
+                      )}
                       <Droppable droppableId={section.id}>
                         {(provided, snapshot) => (
                           <div
@@ -266,13 +315,13 @@ export default function EditorPage() {
                               snapshot.isDraggingOver ? "border-solid shadow-inner" : ""
                             }`}
                           >
-                            {prepStructure[section.id as keyof PrepStructure].length === 0 ? (
+                            {dynamicStructure[section.id]?.length === 0 ? (
                               <p className="text-sm text-gray-500 text-center py-4">
                                 メモをここにドロップ
                               </p>
                             ) : (
                               <div className="space-y-2">
-                                {prepStructure[section.id as keyof PrepStructure].map(
+                                {dynamicStructure[section.id]?.map(
                                   (bullet, index) => (
                                     <Draggable
                                       key={bullet.id}

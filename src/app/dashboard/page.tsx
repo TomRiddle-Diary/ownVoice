@@ -4,52 +4,75 @@ import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
-import { PlusCircle } from "lucide-react";
+import { PlusCircle, FileText, Clock, Trash2 } from "lucide-react";
 
-interface Post {
+interface Project {
   id: string;
   title: string;
   category: string;
-  createdAt: Date;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function DashboardPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [showNewPost, setShowNewPost] = useState(false);
-  const [newTitle, setNewTitle] = useState("");
-  const [newCategory, setNewCategory] = useState("");
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const createProject = () => {
-    if (!newTitle.trim() || !newCategory) {
-      alert("タイトルとカテゴリを入力してください");
+  useEffect(() => {
+    if (status === "authenticated") {
+      loadProjects();
+    }
+  }, [status]);
+
+  const loadProjects = async () => {
+    try {
+      const response = await fetch("/api/project");
+      if (response.ok) {
+        const data = await response.json();
+        setProjects(data);
+      }
+    } catch (error) {
+      console.error("Error loading projects:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const deleteProject = async (id: string) => {
+    if (!confirm("このプロジェクトを削除しますか？")) {
       return;
     }
 
-    const newPost: Post = {
-      id: Date.now().toString(),
-      title: newTitle,
-      category: newCategory,
-      createdAt: new Date(),
-    };
+    try {
+      const response = await fetch(`/api/project/${id}`, {
+        method: "DELETE",
+      });
 
-    setPosts([newPost, ...posts]);
-    
-    // エディターページに遷移
-    router.push(`/editor/${newPost.id}`);
+      if (response.ok) {
+        setProjects(projects.filter(p => p.id !== id));
+      } else {
+        alert("削除に失敗しました");
+      }
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      alert("削除に失敗しました");
+    }
   };
 
   const getCategoryLabel = (category: string) => {
     const labels: { [key: string]: string } = {
-      blog: "技術ブログ",
-      proposal: "提案書",
-      "self-pr": "自己PR",
+      blog: "ブログ記事",
+      proposal: "企画書・提案書",
+      "self-pr": "自己PR", 
       essay: "エッセイ",
+      report: "レポート",
+      other: "その他",
     };
     return labels[category] || category;
   };
@@ -60,7 +83,7 @@ export default function DashboardPage() {
     }
   }, [status, router]);
 
-  if (status === "loading") {
+  if (status === "loading" || isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -75,8 +98,16 @@ export default function DashboardPage() {
     return null;
   }
 
+  const formatDate = (date: string) => {
+    return new Date(date).toLocaleDateString('ja-JP', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-b from-white to-gray-50">
       <header className="bg-white border-b">
         <div className="container mx-auto px-4 py-4 flex justify-between items-center">
           <Link href="/" className="text-2xl font-bold text-gray-900">
@@ -101,110 +132,80 @@ export default function DashboardPage() {
               文章プロジェクトを作成・管理します
             </p>
           </div>
-          <Button onClick={() => setShowNewPost(true)}>
+          <Button onClick={() => router.push('/project/new')} size="lg">
             <PlusCircle className="w-4 h-4 mr-2" />
             新規プロジェクト
           </Button>
         </div>
 
-        {showNewPost && (
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>新規プロジェクト作成</CardTitle>
-              <CardDescription>
-                PREP法を使った新しい文章プロジェクトを開始します
-              </CardDescription>
-            </CardHeader>
+        {projects.length === 0 ? (
+          <Card className="text-center py-16">
             <CardContent>
-              <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); createProject(); }}>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    プロジェクトタイトル
-                  </label>
-                  <Input 
-                    placeholder="例：技術ブログ記事" 
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    カテゴリ
-                  </label>
-                  <Select value={newCategory} onValueChange={setNewCategory}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="カテゴリを選択" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="blog">技術ブログ</SelectItem>
-                      <SelectItem value="proposal">提案書</SelectItem>
-                      <SelectItem value="self-pr">自己PR</SelectItem>
-                      <SelectItem value="essay">エッセイ</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="flex gap-2">
-                  <Button type="button" onClick={createProject}>作成して開始</Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setShowNewPost(false);
-                      setNewTitle("");
-                      setNewCategory("");
-                    }}
-                  >
-                    キャンセル
-                  </Button>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
-        )}
-
-        {posts.length === 0 && !showNewPost && (
-          <div className="text-center py-12">
-            <p className="text-gray-500 mb-4">まだプロジェクトがありません</p>
-            <p className="text-sm text-gray-400 mb-6">
-              「新規プロジェクト」ボタンから最初のプロジェクトを作成しましょう
-            </p>
-          </div>
-        )}
-
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {/* 作成したプロジェクト一覧 */}
-          {posts.map((post) => (
-            <Card key={post.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <CardTitle>{post.title}</CardTitle>
-                <CardDescription>
-                  {getCategoryLabel(post.category)} • {new Date(post.createdAt).toLocaleDateString('ja-JP')}に作成
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button variant="outline" className="w-full" asChild>
-                  <Link href={`/editor/${post.id}`}>プロジェクトを開く</Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
-
-          {/* サンプルプロジェクト */}
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle>サンプルプロジェクト</CardTitle>
-              <CardDescription>技術ブログ • 2日前に作成</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-gray-600 mb-4">
-                PREP法の実践を示すサンプルプロジェクトです...
+              <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                まだプロジェクトがありません
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                「新規プロジェクト」ボタンから最初のプロジェクトを作成しましょう
               </p>
-              <Button variant="outline" className="w-full" asChild>
-                <Link href="/editor/sample">プロジェクトを開く</Link>
+              <Button onClick={() => router.push('/project/new')}>
+                <PlusCircle className="w-4 h-4 mr-2" />
+                最初のプロジェクトを作成
               </Button>
             </CardContent>
           </Card>
-        </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {projects.map((project) => (
+              <Card key={project.id} className="hover:shadow-lg transition-shadow group">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg truncate">{project.title}</CardTitle>
+                      <CardDescription className="mt-1">
+                        <Badge variant="outline" className="mr-2">
+                          {getCategoryLabel(project.category)}
+                        </Badge>
+                      </CardDescription>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        deleteProject(project.id);
+                      }}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <Trash2 className="w-4 h-4 text-red-500" />
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="text-sm text-gray-500 flex items-center gap-2">
+                    <Clock className="w-4 h-4" />
+                    <span>{formatDate(project.updatedAt)}</span>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Button 
+                      className="w-full" 
+                      onClick={() => router.push(`/project/${project.id}/write`)}
+                    >
+                      続きを書く
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => router.push(`/project/${project.id}/ideas`)}
+                    >
+                      アイデアを編集
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </main>
     </div>
   );
