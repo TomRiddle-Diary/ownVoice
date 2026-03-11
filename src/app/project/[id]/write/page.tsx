@@ -1,0 +1,312 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { useSession } from "next-auth/react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import Link from "next/link";
+import { ArrowLeft, Sparkles, Save, Eye, GripVertical } from "lucide-react";
+import { getFormatByTargetLength, type FormatSection } from "@/lib/format-utils";
+
+interface Bullet {
+  id: string;
+  text: string;
+}
+
+type CategorizedBullets = { [sectionId: string]: Bullet[] };
+
+export default function ProjectWritePage() {
+  const router = useRouter();
+  const params = useParams();
+  const projectId = params.id as string;
+  const { data: session, status } = useSession();
+  
+  const [structure, setStructure] = useState<CategorizedBullets>({});
+  const [sections, setSections] = useState<FormatSection[]>([]);
+  const [content, setContent] = useState("");
+  const [feedback, setFeedback] = useState("");
+  const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [projectTitle, setProjectTitle] = useState("");
+  const [cursorPosition, setCursorPosition] = useState(0);
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      loadData();
+    }
+  }, [status, projectId]);
+
+  const loadData = async () => {
+    try {
+      // プロジェクト情報を取得
+      const projectResponse = await fetch(`/api/project/${projectId}/structure`);
+      if (projectResponse.ok) {
+        const projectData = await projectResponse.json();
+        setStructure(projectData.structure || {});
+        
+        // フォーマットを設定
+        const format = getFormatByTargetLength(800);
+        setSections(format.sections);
+      }
+
+      // 既存の下書きを取得
+      const contentResponse = await fetch(`/api/project/${projectId}`);
+      if (contentResponse.ok) {
+        const contentData = await contentResponse.json();
+        setContent(contentData.content || "");
+        setProjectTitle(contentData.title || "無題");
+      }
+    } catch (error) {
+      console.error("Error loading data:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/project/${projectId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+
+      if (!response.ok) {
+        throw new Error("保存に失敗しました");
+      }
+
+      alert("保存しました！");
+    } catch (error) {
+      console.error("Error saving:", error);
+      alert("保存に失敗しました");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const getFeedback = async () => {
+    if (!content) {
+      alert("フィードバックを取得するには、下書きを入力してください");
+      return;
+    }
+
+    setIsLoadingFeedback(true);
+    try {
+      const response = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content,
+          structure,
+          format: "PREP",
+        }),
+      });
+      const data = await response.json();
+      setFeedback(data.feedback);
+    } catch (error) {
+      console.error("Error getting feedback:", error);
+      setFeedback("フィードバックの取得に失敗しました。もう一度試してください。");
+    } finally {
+      setIsLoadingFeedback(false);
+    }
+  };
+
+  // ドラッグ&ドロップ機能
+  const handleDragStart = (e: React.DragEvent, text: string) => {
+    e.dataTransfer.setData("text/plain", text);
+    e.dataTransfer.effectAllowed = "copy";
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLTextAreaElement>) => {
+    e.preventDefault();
+    const text = e.dataTransfer.getData("text/plain");
+    const textarea = e.currentTarget;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    
+    // カーソル位置にテキストを挿入
+    const newContent = 
+      content.substring(0, start) + 
+      text + 
+      content.substring(end);
+    
+    setContent(newContent);
+    
+    // カーソル位置を更新
+    setTimeout(() => {
+      textarea.selectionStart = textarea.selectionEnd = start + text.length;
+      textarea.focus();
+    }, 0);
+  };
+
+  if (status === "loading" || isLoading) {
+    return <div className="min-h-screen flex items-center justify-center">読み込み中...</div>;
+  }
+
+  if (status === "unauthenticated") {
+    router.push("/auth/signin");
+    return null;
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      <header className="bg-white border-b sticky top-0 z-10">
+        <div className="container mx-auto px-4 py-4">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" asChild>
+                <Link href={`/project/${projectId}/organize`}>
+                  <ArrowLeft className="w-4 h-4" />
+                </Link>
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold text-gray-900">{projectTitle}</h1>
+                <p className="text-xs text-gray-500">ステップ 4/4: 文章作成</p>
+              </div>
+              <Badge>下書き</Badge>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleSave} disabled={isSaving}>
+                <Save className="w-4 h-4 mr-2" />
+                {isSaving ? "保存中..." : "保存"}
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/dashboard">
+                  <Eye className="w-4 h-4 mr-2" />
+                  ダッシュボード
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <div className="container mx-auto px-4 py-8">
+        <div className="grid lg:grid-cols-2 gap-8">
+          {/* 左パネル: 構造と参考情報 */}
+          <div className="space-y-6">
+            <Card className="bg-gradient-to-r from-blue-50 to-purple-50">
+              <CardContent className="pt-6">
+                <div className="flex items-start gap-3">
+                  <div className="text-3xl">✨</div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 mb-1">ドラッグ&ドロップで簡単作成</h3>
+                    <p className="text-sm text-gray-600 mb-2">
+                      各アイデアをドラッグして右の編集エリアにドロップすると、カーソル位置に自動挿入されます
+                    </p>
+                    <div className="flex items-center gap-2 text-xs text-gray-500">
+                      <GripVertical className="w-3 h-3" />
+                      <span>アイコンをドラッグしてください</span>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {sections.map((section) => {
+              const bullets = structure[section.id] || [];
+              if (bullets.length === 0) return null;
+
+              return (
+                <Card key={section.id}>
+                  <CardHeader>
+                    <CardTitle className="text-md">{section.label}</CardTitle>
+                    {section.description && (
+                      <CardDescription className="text-xs">
+                        {section.description}
+                      </CardDescription>
+                    )}
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-2">
+                      {bullets.map((bullet) => (
+                        <li 
+                          key={bullet.id} 
+                          className="flex items-center gap-2 text-sm p-3 rounded border border-transparent hover:border-blue-200 hover:bg-blue-50 cursor-move transition-all group"
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, bullet.text)}
+                          title="ドラッグして右のエディタにドロップできます"
+                        >
+                          <GripVertical className="w-4 h-4 text-gray-400 group-hover:text-blue-500 flex-shrink-0" />
+                          <span className="text-blue-500">•</span>
+                          <span className="flex-1">{bullet.text}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* 右パネル: エディター＆フィードバック */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-lg">✍️ 下書き</CardTitle>
+                <CardDescription>
+                  左のアイデアをドラッグ&ドロップ、または自由に文章を作成してください
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Textarea
+                  placeholder="ここに下書きを書き始めます...&#10;&#10;💡 左のアイデアをドラッグしてここにドロップできます"
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  className="min-h-[500px] mb-4 font-sans"
+                />
+                <div className="flex gap-2">
+                  <Button onClick={getFeedback} disabled={!content || isLoadingFeedback}>
+                    <Sparkles className="w-4 h-4 mr-2" />
+                    {isLoadingFeedback ? "分析中..." : "AIフィードバックを取得"}
+                  </Button>
+                  <Button onClick={handleSave} disabled={isSaving} variant="outline">
+                    <Save className="w-4 h-4 mr-2" />
+                    {isSaving ? "保存中..." : "保存"}
+                  </Button>
+                </div>
+                <div className="mt-2 text-xs text-gray-500">
+                  {content.length} 文字
+                </div>
+              </CardContent>
+            </Card>
+
+            {(isLoadingFeedback || feedback) && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">🤖 AIフィードバック</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {isLoadingFeedback ? (
+                    <div className="space-y-2">
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-5/6" />
+                      <Skeleton className="h-4 w-4/6" />
+                    </div>
+                  ) : (
+                    <div className="prose prose-sm max-w-none">
+                      <p className="text-sm whitespace-pre-wrap">{feedback}</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
