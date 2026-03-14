@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import { ArrowLeft, Sparkles, Save, Eye, GripVertical, Trash2, Edit2, Check, X, Plus } from "lucide-react";
+import { ArrowLeft, Sparkles, Save, Eye, GripVertical, Trash2, Edit2, Check, X, Plus, Copy } from "lucide-react";
 import { getFormatByCategory, type FormatSection } from "@/lib/format-utils";
 
 interface Bullet {
@@ -59,6 +59,7 @@ export default function ProjectWritePage() {
   const [isAddIdeaDialogOpen, setIsAddIdeaDialogOpen] = useState(false);
   const [selectedSectionForIdea, setSelectedSectionForIdea] = useState<string>("");
   const [newIdeaText, setNewIdeaText] = useState("");
+  const [isCopied, setIsCopied] = useState(false);
 
   const allSections = [
     ...sections.filter(s => !removedSectionIds.includes(s.id)),
@@ -135,6 +136,17 @@ export default function ProjectWritePage() {
       alert("保存に失敗しました");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(content);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch (error) {
+      console.error("Error copying:", error);
+      alert("コピーに失敗しました");
     }
   };
 
@@ -516,6 +528,10 @@ export default function ProjectWritePage() {
                   <Button onClick={handleSave} disabled={isSaving} variant="outline">
                     <Save className="w-4 h-4 mr-2" />
                     {isSaving ? "保存中..." : "保存"}
+                  </Button>
+                  <Button onClick={handleCopy} disabled={!content} variant="outline">
+                    <Copy className="w-4 h-4 mr-2" />
+                    {isCopied ? "コピー済み" : "コピー"}
                   </Button>
                 </div>
                 <div className="mt-2 text-xs text-gray-500">
