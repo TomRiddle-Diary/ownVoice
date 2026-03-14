@@ -16,9 +16,8 @@ import {
 } from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import { ArrowLeft, Sparkles, Save, Eye, GripVertical, Trash2, Edit2, Check, X, Plus, Copy } from "lucide-react";
+import { ArrowLeft, Save, Eye, GripVertical, Trash2, Edit2, Check, X, Plus, Copy } from "lucide-react";
 import { getFormatByCategory, type FormatSection } from "@/lib/format-utils";
 
 interface Bullet {
@@ -49,8 +48,6 @@ export default function ProjectWritePage() {
   const [removedSectionIds, setRemovedSectionIds] = useState<string[]>([]);
   const [sectionOrder, setSectionOrder] = useState<string[]>([]);
   const [content, setContent] = useState("");
-  const [feedback, setFeedback] = useState("");
-  const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [cursorPosition, setCursorPosition] = useState(0);
@@ -267,33 +264,6 @@ export default function ProjectWritePage() {
   const getSectionLabel = (sectionId: string): string => {
     const section = orderedSections.find(s => s.id === sectionId);
     return section?.label || sectionId;
-  };
-
-  const getFeedback = async () => {
-    if (!content) {
-      alert("フィードバックを取得するには、下書きを入力してください");
-      return;
-    }
-
-    setIsLoadingFeedback(true);
-    try {
-      const response = await fetch("/api/feedback", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          content,
-          structure,
-          format: "PREP",
-        }),
-      });
-      const data = await response.json();
-      setFeedback(data.feedback);
-    } catch (error) {
-      console.error("Error getting feedback:", error);
-      setFeedback("フィードバックの取得に失敗しました。もう一度試してください。");
-    } finally {
-      setIsLoadingFeedback(false);
-    }
   };
 
   // ドラッグ&ドロップ機能
@@ -521,10 +491,6 @@ export default function ProjectWritePage() {
                   className="h-[calc(100vh-350px)] mb-4 font-sans resize-none"
                 />
                 <div className="flex gap-2">
-                  <Button onClick={getFeedback} disabled={!content || isLoadingFeedback}>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    {isLoadingFeedback ? "分析中..." : "AIフィードバックを取得"}
-                  </Button>
                   <Button onClick={handleSave} disabled={isSaving} variant="outline">
                     <Save className="w-4 h-4 mr-2" />
                     {isSaving ? "保存中..." : "保存"}
@@ -539,27 +505,6 @@ export default function ProjectWritePage() {
                 </div>
               </CardContent>
             </Card>
-
-            {(isLoadingFeedback || feedback) && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">🤖 AIフィードバック</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {isLoadingFeedback ? (
-                    <div className="space-y-2">
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-5/6" />
-                      <Skeleton className="h-4 w-4/6" />
-                    </div>
-                  ) : (
-                    <div className="prose prose-sm max-w-none">
-                      <p className="text-sm whitespace-pre-wrap">{feedback}</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
           </div>
         </div>
       </div>
