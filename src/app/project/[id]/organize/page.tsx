@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, GripVertical, Plus, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, GripVertical, Plus, X, Trash2 } from "lucide-react";
 import { getFormatByCategory, type FormatSection } from "@/lib/format-utils";
 
 interface Bullet {
@@ -229,6 +229,18 @@ export default function ProjectOrganizePage() {
     return section?.label || sectionId;
   };
 
+  const handleRemoveIdea = (sectionId: string, bulletId: string) => {
+    if (!confirm("このアイデアを削除しますか？")) {
+      return;
+    }
+
+    const updatedBullets = (categorizedBullets[sectionId] || []).filter(b => b.id !== bulletId);
+    setCategorizedBullets({
+      ...categorizedBullets,
+      [sectionId]: updatedBullets,
+    });
+  };
+
   const allSections = [
     ...sections.filter(s => !removedSectionIds.includes(s.id)),
     ...customSections
@@ -390,11 +402,27 @@ export default function ProjectOrganizePage() {
                                     <div
                                       ref={provided.innerRef}
                                       {...provided.draggableProps}
-                                      {...provided.dragHandleProps}
-                                      className="flex items-center gap-2 p-3 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-move"
+                                      className="group flex items-center gap-2 p-3 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow"
                                     >
-                                      <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                      <div
+                                        {...provided.dragHandleProps}
+                                        className="cursor-move"
+                                      >
+                                        <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                      </div>
                                       <span className="flex-1 text-sm">{bullet.text}</span>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleRemoveIdea('uncategorized', bullet.id);
+                                        }}
+                                        title="削除"
+                                      >
+                                        <Trash2 className="h-3 w-3 text-gray-500 hover:text-red-500" />
+                                      </Button>
                                     </div>
                                   )}
                                 </Draggable>
@@ -477,11 +505,27 @@ export default function ProjectOrganizePage() {
                                   <div
                                     ref={provided.innerRef}
                                     {...provided.draggableProps}
-                                    {...provided.dragHandleProps}
-                                    className="flex items-center gap-2 p-2 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow"
+                                    className="group flex items-center gap-2 p-2 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow"
                                   >
-                                    <GripVertical className="w-4 h-4 text-gray-400" />
+                                    <div
+                                      {...provided.dragHandleProps}
+                                      className="cursor-move"
+                                    >
+                                      <GripVertical className="w-4 h-4 text-gray-400" />
+                                    </div>
                                     <span className="flex-1 text-sm">{bullet.text}</span>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleRemoveIdea(section.id, bullet.id);
+                                      }}
+                                      title="削除"
+                                    >
+                                      <Trash2 className="h-3 w-3 text-gray-500 hover:text-red-500" />
+                                    </Button>
                                   </div>
                                 )}
                               </Draggable>

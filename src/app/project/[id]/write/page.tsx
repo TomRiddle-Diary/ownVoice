@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import { ArrowLeft, Sparkles, Save, Eye, GripVertical } from "lucide-react";
+import { ArrowLeft, Sparkles, Save, Eye, GripVertical, Trash2 } from "lucide-react";
 import { getFormatByCategory, type FormatSection } from "@/lib/format-utils";
 
 interface Bullet {
@@ -121,6 +121,35 @@ export default function ProjectWritePage() {
       alert("保存に失敗しました");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleRemoveIdea = async (sectionId: string, bulletId: string) => {
+    if (!confirm("このアイデアを削除しますか？")) {
+      return;
+    }
+
+    const updatedBullets = (structure[sectionId] || []).filter(b => b.id !== bulletId);
+    const newStructure = {
+      ...structure,
+      [sectionId]: updatedBullets,
+    };
+    setStructure(newStructure);
+
+    // サーバーに保存
+    try {
+      await fetch(`/api/project/${projectId}/structure`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          structure: newStructure,
+          customSections: customSections,
+          removedSectionIds: removedSectionIds,
+          sectionOrder: sectionOrder,
+        }),
+      });
+    } catch (error) {
+      console.error("Error saving structure:", error);
     }
   };
 
@@ -275,6 +304,18 @@ export default function ProjectWritePage() {
                           <GripVertical className="w-4 h-4 text-gray-400 group-hover:text-blue-500 flex-shrink-0" />
                           <span className="text-blue-500">•</span>
                           <span className="flex-1">{bullet.text}</span>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveIdea(section.id, bullet.id);
+                            }}
+                            title="削除"
+                          >
+                            <Trash2 className="h-3 w-3 text-gray-500 hover:text-red-500" />
+                          </Button>
                         </li>
                       ))}
                     </ul>

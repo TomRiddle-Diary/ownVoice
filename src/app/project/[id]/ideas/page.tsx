@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, Plus, Trash2, Lightbulb } from "lucide-react";
+import { ArrowLeft, ArrowRight, Plus, Trash2, Lightbulb, Edit2, Check, X } from "lucide-react";
 
 interface Bullet {
   id: string;
@@ -22,6 +22,8 @@ export default function ProjectIdeasPage() {
   
   const [bullets, setBullets] = useState<Bullet[]>([]);
   const [newBulletText, setNewBulletText] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -58,6 +60,26 @@ export default function ProjectIdeasPage() {
 
   const removeBullet = (id: string) => {
     setBullets(bullets.filter((b) => b.id !== id));
+  };
+
+  const startEditing = (bullet: Bullet) => {
+    setEditingId(bullet.id);
+    setEditingText(bullet.text);
+  };
+
+  const saveEdit = () => {
+    if (editingText.trim() && editingId) {
+      setBullets(bullets.map(b => 
+        b.id === editingId ? { ...b, text: editingText.trim() } : b
+      ));
+      setEditingId(null);
+      setEditingText("");
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingText("");
   };
 
   const handleNext = async () => {
@@ -164,15 +186,67 @@ export default function ProjectIdeasPage() {
                     <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-100 text-blue-600 text-xs flex items-center justify-center font-medium">
                       {index + 1}
                     </span>
-                    <span className="flex-1 text-sm">{bullet.text}</span>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removeBullet(bullet.id)}
-                      className="flex-shrink-0"
-                    >
-                      <Trash2 className="w-4 h-4 text-gray-400" />
-                    </Button>
+                    
+                    {editingId === bullet.id ? (
+                      // 編集モード
+                      <>
+                        <Input
+                          value={editingText}
+                          onChange={(e) => setEditingText(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              saveEdit();
+                            } else if (e.key === "Escape") {
+                              cancelEdit();
+                            }
+                          }}
+                          className="flex-1"
+                          autoFocus
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={saveEdit}
+                          className="flex-shrink-0"
+                          title="保存"
+                        >
+                          <Check className="w-4 h-4 text-green-600" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={cancelEdit}
+                          className="flex-shrink-0"
+                          title="キャンセル"
+                        >
+                          <X className="w-4 h-4 text-gray-400" />
+                        </Button>
+                      </>
+                    ) : (
+                      // 表示モード
+                      <>
+                        <span className="flex-1 text-sm">{bullet.text}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => startEditing(bullet)}
+                          className="flex-shrink-0"
+                          title="編集"
+                        >
+                          <Edit2 className="w-4 h-4 text-gray-400" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeBullet(bullet.id)}
+                          className="flex-shrink-0"
+                          title="削除"
+                        >
+                          <Trash2 className="w-4 h-4 text-gray-400" />
+                        </Button>
+                      </>
+                    )}
                   </div>
                 ))
               )}
