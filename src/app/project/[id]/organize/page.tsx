@@ -7,13 +7,30 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, GripVertical, Sparkles, RefreshCw } from "lucide-react";
-import { getFormatByTargetLength, type FormatSection } from "@/lib/format-utils";
+import { ArrowLeft, ArrowRight, GripVertical, Plus, X } from "lucide-react";
+import { getFormatByCategory, type FormatSection } from "@/lib/format-utils";
 
 interface Bullet {
   id: string;
   text: string;
+}
+
+interface Project {
+  id: string;
+  title: string;
+  category: string;
+  targetLength: number;
 }
 
 type CategorizedBullets = { [sectionId: string]: Bullet[] };
@@ -25,13 +42,17 @@ export default function ProjectOrganizePage() {
   const projectId = params.id as string;
   const { data: session, status } = useSession();
   
+  const [project, setProject] = useState<Project | null>(null);
   const [bullets, setBullets] = useState<Bullet[]>([]);
   const [categorizedBullets, setCategorizedBullets] = useState<CategorizedBullets>({});
   const [sections, setSections] = useState<FormatSection[]>([]);
+  const [customSections, setCustomSections] = useState<FormatSection[]>([]);
+  const [removedSectionIds, setRemovedSectionIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isCategorizing, setIsCategorizing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [hasCategorized, setHasCategorized] = useState(false);
+  const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [newSectionName, setNewSectionName] = useState("");
+  const [newSectionDescription, setNewSectionDescription] = useState("");
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -41,66 +62,69 @@ export default function ProjectOrganizePage() {
 
   const loadData = async () => {
     try {
-      // プロジェクト情報とbulletsを取得
-      const response = await fetch(`/api/project/${projectId}/bullets`);
-      if (response.ok) {
-        const data = await response.json();
+      // プロジェクト情報を取得
+      const projectRes = await fetch(`/api/project/${projectId}`);
+      if (!projectRes.ok) {
+        const errorData = await projectRes.json();
+        console.error("Project fetch error:", errorData);
+        throw new Error(`プロジェクト情報取得失敗: ${errorData.error || projectRes.status}`);
+      }
+      const projectData = await projectRes.json();
+      setProject(projectData);
+      
+      // bulletsを取得
+      const bulletsRes = await fetch(`/api/project/${projectId}/bullets`);
+      if (bulletsRes.ok) {
+        const data = await bulletsRes.json();
         setBullets(data.bullets || []);
         
-        // フォーマットを設定（デフォルト800字）
-        const targetLength = 800;
-        const format = getFormatByTargetLength(targetLength);
+        // カテゴリに基づいてフォーマットを設定
+        const format = getFormatByCategory(
+          projectData.category || "other", 
+          projectData.targetLength || 800
+        );
         setSections(format.sections);
         
-        // 空のカテゴリを初期化
+        // 既存の構造を取得
+        const structureRes = await fetch(`/api/project/${projectId}/structure`);
+        let existingStructure: CategorizedBullets = {};
+        let existingCustomSections: FormatSection[] = [];
+        let existingRemovedSectionIds: string[] = [];
+        
+        if (structureRes.ok) {
+          const structData = await structureRes.json();
+          existingStructure = structData.structure || {};
+          existingCustomSections = structData.customSections || [];
+          existingRemovedSectionIds = structData.removedSectionIds || [];
+          setCustomSections(existingCustomSections);
+          setRemovedSectionIds(existingRemovedSectionIds);
+        }
+        
+        // カテゴリを初期化
         const emptyCategories: CategorizedBullets = {};
         format.sections.forEach(section => {
-          emptyCategories[section.id] = [];
+          emptyCategories[section.id] = existingStructure[section.id] || [];
         });
-        emptyCategories['uncategorized'] = data.bullets || [];
+        
+        // カスタムセクションも初期化
+        existingCustomSections.forEach(section => {
+          emptyCategories[section.id] = existingStructure[section.id] || [];
+        });
+        
+        // 未分類エリア
+        const assignedBullets = new Set(
+          Object.values(emptyCategories).flat().map(b => b.id)
+        );
+        const uncategorized = data.bullets.filter((b: Bullet) => !assignedBullets.has(b.id));
+        emptyCategories['uncategorized'] = uncategorized;
+        
         setCategorizedBullets(emptyCategories);
       }
     } catch (error) {
       console.error("Error loading data:", error);
+      alert("データの読み込みに失敗しました");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleAutoCategorize = async () => {
-    if (bullets.length === 0) {
-      alert("カテゴライズするアイデアがありません");
-      return;
-    }
-
-    setIsCategorizing(true);
-    try {
-      const response = await fetch(`/api/project/${projectId}/categorize`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          bullets,
-          sections: sections.map(s => ({ id: s.id, label: s.label, description: s.description })),
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("カテゴライズに失敗しました");
-      }
-
-      const data = await response.json();
-      setCategorizedBullets(data.categorizedBullets);
-      setHasCategorized(true);
-      
-      // メッセージがある場合は表示
-      if (data.message) {
-        alert(data.message);
-      }
-    } catch (error) {
-      console.error("Error categorizing:", error);
-      alert("カテゴライズに失敗しました。もう一度試してください。");
-    } finally {
-      setIsCategorizing(false);
     }
   };
 
@@ -137,14 +161,91 @@ export default function ProjectOrganizePage() {
     }
   };
 
+  const handleAddSection = () => {
+    if (!newSectionName.trim()) {
+      alert("セクション名を入力してください");
+      return;
+    }
+
+    const customId = `custom_${Date.now()}`;
+    const newSection: FormatSection = {
+      id: customId,
+      label: newSectionName.trim(),
+      description: newSectionDescription.trim() || "カスタムセクション",
+      color: "bg-gray-100 border-gray-300",
+      placeholder: `${newSectionName}に関する内容...`,
+      recommendedLength: 200,
+      keywords: [],
+    };
+
+    setCustomSections([...customSections, newSection]);
+    setCategorizedBullets({
+      ...categorizedBullets,
+      [customId]: [],
+    });
+
+    // ダイアログを閉じて入力をリセット
+    setNewSectionName("");
+    setNewSectionDescription("");
+    setIsAddDialogOpen(false);
+  };
+
+  const handleRemoveSection = (sectionId: string) => {
+    // そのセクションにアイデアがある場合は警告
+    const bulletsInSection = categorizedBullets[sectionId] || [];
+    if (bulletsInSection.length > 0) {
+      if (!confirm(`「${getSectionLabel(sectionId)}」には${bulletsInSection.length}件のアイデアがあります。削除すると未分類に戻ります。よろしいですか？`)) {
+        return;
+      }
+    } else {
+      if (!confirm(`「${getSectionLabel(sectionId)}」を削除しますか？`)) {
+        return;
+      }
+    }
+
+    // デフォルトセクションの場合は削除済みリストに追加
+    const isDefaultSection = sections.some(s => s.id === sectionId);
+    if (isDefaultSection) {
+      setRemovedSectionIds([...removedSectionIds, sectionId]);
+    } else {
+      // カスタムセクションの場合は配列から削除
+      setCustomSections(customSections.filter(s => s.id !== sectionId));
+    }
+    
+    // categorizedBulletsから削除（アイデアは未分類に戻す）
+    const newCategorized = { ...categorizedBullets };
+    if (bulletsInSection.length > 0) {
+      newCategorized['uncategorized'] = [
+        ...(newCategorized['uncategorized'] || []), 
+        ...bulletsInSection
+      ];
+    }
+    delete newCategorized[sectionId];
+    setCategorizedBullets(newCategorized);
+  };
+
+  const getSectionLabel = (sectionId: string): string => {
+    const section = [...sections, ...customSections].find(s => s.id === sectionId);
+    return section?.label || sectionId;
+  };
+
+  const allSections = [
+    ...sections.filter(s => !removedSectionIds.includes(s.id)),
+    ...customSections
+  ];
+
   const handleNext = async () => {
     setIsSaving(true);
     try {
-      // カテゴライズ結果を保存
+      // カテゴライズ結果、カスタムセクション、削除されたセクションを保存
       const response = await fetch(`/api/project/${projectId}/structure`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ structure: categorizedBullets }),
+        body: JSON.stringify({ 
+          structure: categorizedBullets,
+          customSections: customSections,
+          removedSectionIds: removedSectionIds,
+        }),
       });
 
       if (!response.ok) {
@@ -186,39 +287,74 @@ export default function ProjectOrganizePage() {
                 <p className="text-xs text-gray-500">ステップ 3/4: カテゴライズ＆並べ替え</p>
               </div>
             </div>
-            <Button
-              onClick={handleAutoCategorize}
-              disabled={isCategorizing || bullets.length === 0}
-              variant="outline"
-            >
-              <Sparkles className="w-4 h-4 mr-2" />
-              {isCategorizing ? "分析中..." : hasCategorized ? "再分析" : "AI自動分類"}
-            </Button>
+            <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Plus className="w-4 h-4 mr-2" />
+                  セクション追加
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>新しいセクションを追加</DialogTitle>
+                  <DialogDescription>
+                    カスタムセクションを作成して、アイデアを自由に分類できます。
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="section-name">セクション名 *</Label>
+                    <Input
+                      id="section-name"
+                      placeholder="例: 補足説明、参考文献、etc"
+                      value={newSectionName}
+                      onChange={(e) => setNewSectionName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          handleAddSection();
+                        }
+                      }}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="section-description">説明（任意）</Label>
+                    <Input
+                      id="section-description"
+                      placeholder="このセクションの用途を説明"
+                      value={newSectionDescription}
+                      onChange={(e) => setNewSectionDescription(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                    キャンセル
+                  </Button>
+                  <Button onClick={handleAddSection}>
+                    追加
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        {!hasCategorized && (
-          <Card className="mb-6 bg-gradient-to-r from-purple-50 to-blue-50">
-            <CardContent className="pt-6">
-              <div className="flex items-start gap-3">
-                <Sparkles className="w-6 h-6 text-purple-500 flex-shrink-0 mt-1" />
-                <div>
-                  <h3 className="font-semibold text-gray-900 mb-2">AIでアイデアを自動分類</h3>
-                  <p className="text-sm text-gray-600 mb-3">
-                    右上の「AI自動分類」ボタンをクリックすると、アイデアを文章構造に合わせて自動的に分類します。
-                    分類後、ドラッグ＆ドロップで自由に整理できます。
-                  </p>
-                  <Button onClick={handleAutoCategorize} disabled={isCategorizing || bullets.length === 0}>
-                    <Sparkles className="w-4 h-4 mr-2" />
-                    {isCategorizing ? "分析中..." : "今すぐ分類する"}
-                  </Button>
-                </div>
+        <Card className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <CardContent className="pt-6">
+            <div className="flex items-start gap-3">
+              <GripVertical className="w-6 h-6 text-blue-500 flex-shrink-0 mt-1" />
+              <div>
+                <h3 className="font-semibold text-gray-900 mb-2">手動でアイデアを整理</h3>
+                <p className="text-sm text-gray-600">
+                  未分類のアイデアを各セクションにドラッグ＆ドロップして整理してください。
+                  各セクションは文章の構成に対応しています。自由に並べ替えて最適な構成を見つけましょう。
+                </p>
               </div>
-            </CardContent>
-          </Card>
-        )}
+            </div>
+          </CardContent>
+        </Card>
 
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="grid lg:grid-cols-2 gap-6">
@@ -267,20 +403,43 @@ export default function ProjectOrganizePage() {
             )}
 
             {/* セクションごとのドロップエリア */}
-            {sections.map((section) => (
+            {allSections.map((section) => {
+              const isCustomSection = customSections.some(s => s.id === section.id);
+              return (
               <Card key={section.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-md">{section.label}</CardTitle>
-                    <Badge variant="outline">
-                      {categorizedBullets[section.id]?.length || 0} 件
-                    </Badge>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-md">{section.label}</CardTitle>
+                        {isCustomSection && (
+                          <Badge variant="secondary" className="text-xs">カスタム</Badge>
+                        )}
+                      </div>
+                      {section.description && (
+                        <CardDescription className="text-xs mt-1">
+                          {section.description}
+                        </CardDescription>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline">
+                        {categorizedBullets[section.id]?.length || 0} 件
+                      </Badge>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveSection(section.id);
+                        }}
+                        title="セクションを削除"
+                      >
+                        <X className="h-4 w-4 text-gray-500 hover:text-red-500" />
+                      </Button>
+                    </div>
                   </div>
-                  {section.description && (
-                    <CardDescription className="text-xs">
-                      {section.description}
-                    </CardDescription>
-                  )}
                 </CardHeader>
                 <CardContent>
                   <Droppable droppableId={section.id}>
@@ -323,7 +482,8 @@ export default function ProjectOrganizePage() {
                   </Droppable>
                 </CardContent>
               </Card>
-            ))}
+              );
+            })}
           </div>
         </DragDropContext>
 

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Post" ADD COLUMN     "targetLength" INTEGER NOT NULL DEFAULT 800;
