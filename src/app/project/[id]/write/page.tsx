@@ -38,6 +38,7 @@ export default function ProjectWritePage() {
   const [sections, setSections] = useState<FormatSection[]>([]);
   const [customSections, setCustomSections] = useState<FormatSection[]>([]);
   const [removedSectionIds, setRemovedSectionIds] = useState<string[]>([]);
+  const [sectionOrder, setSectionOrder] = useState<string[]>([]);
   const [content, setContent] = useState("");
   const [feedback, setFeedback] = useState("");
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
@@ -49,6 +50,13 @@ export default function ProjectWritePage() {
     ...sections.filter(s => !removedSectionIds.includes(s.id)),
     ...customSections
   ];
+
+  // セクション順序に基づいてソート
+  const orderedSections = sectionOrder.length > 0
+    ? sectionOrder
+        .map(id => allSections.find(s => s.id === id))
+        .filter((s): s is FormatSection => s !== undefined)
+    : allSections;
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -84,6 +92,7 @@ export default function ProjectWritePage() {
         setStructure(structureData.structure || {});
         setCustomSections(structureData.customSections || []);
         setRemovedSectionIds(structureData.removedSectionIds || []);
+        setSectionOrder(structureData.sectionOrder || []);
       }
     } catch (error) {
       console.error("Error loading data:", error);
@@ -197,7 +206,7 @@ export default function ProjectWritePage() {
               </Button>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">{project?.title || "無題"}</h1>
-                <p className="text-xs text-gray-500">ステップ 4/4: 文章作成</p>
+                <p className="text-xs text-gray-500">ステップ 5/5: 文章作成</p>
               </div>
               <Badge>下書き</Badge>
             </div>
@@ -239,7 +248,7 @@ export default function ProjectWritePage() {
               </CardContent>
             </Card>
 
-            {allSections.map((section) => {
+            {orderedSections.map((section) => {
               const bullets = structure[section.id] || [];
               if (bullets.length === 0) return null;
 
