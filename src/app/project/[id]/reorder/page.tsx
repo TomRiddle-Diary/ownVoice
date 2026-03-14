@@ -19,7 +19,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, GripVertical, MoveVertical, Plus, X, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, GripVertical, MoveVertical, Plus, X, Trash2, Edit2, Check } from "lucide-react";
 import { getFormatByCategory, type FormatSection } from "@/lib/format-utils";
 
 interface Bullet {
@@ -56,6 +56,8 @@ export default function ProjectReorderPage() {
   const [newSectionDescription, setNewSectionDescription] = useState("");
   const [newIdeaText, setNewIdeaText] = useState("");
   const [selectedSectionForIdea, setSelectedSectionForIdea] = useState<string>("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -245,6 +247,30 @@ export default function ProjectReorderPage() {
       ...categorizedBullets,
       [sectionId]: updatedBullets,
     });
+  };
+
+  const startEditing = (bullet: Bullet) => {
+    setEditingId(bullet.id);
+    setEditingText(bullet.text);
+  };
+
+  const saveEdit = (sectionId: string) => {
+    if (editingText.trim() && editingId) {
+      const updatedBullets = (categorizedBullets[sectionId] || []).map(b => 
+        b.id === editingId ? { ...b, text: editingText.trim() } : b
+      );
+      setCategorizedBullets({
+        ...categorizedBullets,
+        [sectionId]: updatedBullets,
+      });
+      setEditingId(null);
+      setEditingText("");
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingText("");
   };
   const handleNext = async () => {
     setIsSaving(true);
@@ -520,19 +546,66 @@ export default function ProjectReorderPage() {
                                             >
                                               <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
                                             </div>
-                                            <span className="flex-1 text-sm">{bullet.text}</span>
-                                            <Button
-                                              variant="ghost"
-                                              size="icon"
-                                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleRemoveIdea(section.id, bullet.id);
-                                              }}
-                                              title="アイデアを削除"
-                                            >
-                                              <Trash2 className="h-3 w-3 text-gray-500 hover:text-red-500" />
-                                            </Button>
+                                            {editingId === bullet.id ? (
+                                              <>
+                                                <Input
+                                                  className="flex-1 h-8"
+                                                  value={editingText}
+                                                  onChange={(e) => setEditingText(e.target.value)}
+                                                  onKeyDown={(e) => {
+                                                    if (e.key === "Enter") saveEdit(section.id);
+                                                    if (e.key === "Escape") cancelEdit();
+                                                  }}
+                                                  autoFocus
+                                                />
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-6 w-6"
+                                                  onClick={() => saveEdit(section.id)}
+                                                  title="保存"
+                                                >
+                                                  <Check className="h-3 w-3 text-green-600" />
+                                                </Button>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-6 w-6"
+                                                  onClick={cancelEdit}
+                                                  title="キャンセル"
+                                                >
+                                                  <X className="h-3 w-3 text-gray-500" />
+                                                </Button>
+                                              </>
+                                            ) : (
+                                              <>
+                                                <span className="flex-1 text-sm">{bullet.text}</span>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    startEditing(bullet);
+                                                  }}
+                                                  title="編集"
+                                                >
+                                                  <Edit2 className="h-3 w-3 text-gray-500" />
+                                                </Button>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleRemoveIdea(section.id, bullet.id);
+                                                  }}
+                                                  title="アイデアを削除"
+                                                >
+                                                  <Trash2 className="h-3 w-3 text-gray-500 hover:text-red-500" />
+                                                </Button>
+                                              </>
+                                            )}
                                           </div>
                                         )}
                                       </Draggable>

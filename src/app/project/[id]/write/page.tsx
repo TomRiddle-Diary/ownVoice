@@ -5,11 +5,20 @@ import { useRouter, useParams } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
-import { ArrowLeft, Sparkles, Save, Eye, GripVertical, Trash2 } from "lucide-react";
+import { ArrowLeft, Sparkles, Save, Eye, GripVertical, Trash2, Edit2, Check, X, Plus } from "lucide-react";
 import { getFormatByCategory, type FormatSection } from "@/lib/format-utils";
 
 interface Bullet {
@@ -45,6 +54,11 @@ export default function ProjectWritePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [cursorPosition, setCursorPosition] = useState(0);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [isAddIdeaDialogOpen, setIsAddIdeaDialogOpen] = useState(false);
+  const [selectedSectionForIdea, setSelectedSectionForIdea] = useState<string>("");
+  const [newIdeaText, setNewIdeaText] = useState("");
 
   const allSections = [
     ...sections.filter(s => !removedSectionIds.includes(s.id)),
@@ -151,6 +165,96 @@ export default function ProjectWritePage() {
     } catch (error) {
       console.error("Error saving structure:", error);
     }
+  };
+
+  const startEditing = (bullet: Bullet) => {
+    setEditingId(bullet.id);
+    setEditingText(bullet.text);
+  };
+
+  const saveEdit = async (sectionId: string) => {
+    if (editingText.trim() && editingId) {
+      const updatedBullets = (structure[sectionId] || []).map(b => 
+        b.id === editingId ? { ...b, text: editingText.trim() } : b
+      );
+      const newStructure = {
+        ...structure,
+        [sectionId]: updatedBullets,
+      };
+      setStructure(newStructure);
+      setEditingId(null);
+      setEditingText("");
+
+      // サーバーに保存
+      try {
+        await fetch(`/api/project/${projectId}/structure`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            structure: newStructure,
+            customSections: customSections,
+            removedSectionIds: removedSectionIds,
+            sectionOrder: sectionOrder,
+          }),
+        });
+      } catch (error) {
+        console.error("Error saving structure:", error);
+      }
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingText("");
+  };
+
+  const openAddIdeaDialog = (sectionId: string) => {
+    setSelectedSectionForIdea(sectionId);
+    setNewIdeaText("");
+    setIsAddIdeaDialogOpen(true);
+  };
+
+  const handleAddIdea = async () => {
+    if (!newIdeaText.trim()) {
+      alert("アイデアを入力してください");
+      return;
+    }
+
+    const newBullet: Bullet = {
+      id: `temp-${Date.now()}`,
+      text: newIdeaText.trim(),
+    };
+
+    const updatedBullets = [...(structure[selectedSectionForIdea] || []), newBullet];
+    const newStructure = {
+      ...structure,
+      [selectedSectionForIdea]: updatedBullets,
+    };
+    setStructure(newStructure);
+
+    // サーバーに保存
+    try {
+      await fetch(`/api/project/${projectId}/structure`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          structure: newStructure,
+          customSections: customSections,
+          removedSectionIds: removedSectionIds,
+          sectionOrder: sectionOrder,
+        }),
+      });
+    } catch (error) {
+      console.error("Error saving structure:", error);
+    }
+
+    setNewIdeaText("");
+    setIsAddIdeaDialogOpen(false);
+  };
+
+  const getSectionLabel = (sectionId: string): string => {
+    const section = orderedSections.find(s => s.id === sectionId);
+    return section?.label || sectionId;
   };
 
   const getFeedback = async () => {
@@ -284,38 +388,101 @@ export default function ProjectWritePage() {
               return (
                 <Card key={section.id}>
                   <CardHeader>
-                    <CardTitle className="text-md">{section.label}</CardTitle>
-                    {section.description && (
-                      <CardDescription className="text-xs">
-                        {section.description}
-                      </CardDescription>
-                    )}
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-md">{section.label}</CardTitle>
+                        {section.description && (
+                          <CardDescription className="text-xs">
+                            {section.description}
+                          </CardDescription>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openAddIdeaDialog(section.id)}
+                        title="アイデアを追加"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <ul className="space-y-2">
                       {bullets.map((bullet) => (
                         <li 
                           key={bullet.id} 
-                          className="flex items-center gap-2 text-sm p-3 rounded border border-transparent hover:border-blue-200 hover:bg-blue-50 cursor-move transition-all group"
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, bullet.text)}
-                          title="ドラッグして右のエディタにドロップできます"
+                          className="flex items-center gap-2 text-sm p-3 rounded border border-transparent hover:border-blue-200 hover:bg-blue-50 transition-all group"
                         >
-                          <GripVertical className="w-4 h-4 text-gray-400 group-hover:text-blue-500 flex-shrink-0" />
-                          <span className="text-blue-500">•</span>
-                          <span className="flex-1">{bullet.text}</span>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveIdea(section.id, bullet.id);
-                            }}
-                            title="削除"
-                          >
-                            <Trash2 className="h-3 w-3 text-gray-500 hover:text-red-500" />
-                          </Button>
+                          {editingId === bullet.id ? (
+                            <>
+                              <Input
+                                className="flex-1 h-8"
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") saveEdit(section.id);
+                                  if (e.key === "Escape") cancelEdit();
+                                }}
+                                autoFocus
+                              />
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => saveEdit(section.id)}
+                                title="保存"
+                              >
+                                <Check className="h-3 w-3 text-green-600" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={cancelEdit}
+                                title="キャンセル"
+                              >
+                                <X className="h-3 w-3 text-gray-500" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <div 
+                                className="flex items-center gap-2 flex-1 cursor-move"
+                                draggable
+                                onDragStart={(e) => handleDragStart(e, bullet.text)}
+                                title="ドラッグして右のエディタにドロップできます"
+                              >
+                                <GripVertical className="w-4 h-4 text-gray-400 group-hover:text-blue-500 flex-shrink-0" />
+                                <span className="text-blue-500">•</span>
+                                <span className="flex-1">{bullet.text}</span>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  startEditing(bullet);
+                                }}
+                                title="編集"
+                              >
+                                <Edit2 className="h-3 w-3 text-gray-500" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveIdea(section.id, bullet.id);
+                                }}
+                                title="削除"
+                              >
+                                <Trash2 className="h-3 w-3 text-gray-500 hover:text-red-500" />
+                              </Button>
+                            </>
+                          )}
                         </li>
                       ))}
                     </ul>
@@ -382,6 +549,42 @@ export default function ProjectWritePage() {
           </div>
         </div>
       </div>
+
+      {/* アイデア追加ダイアログ */}
+      <Dialog open={isAddIdeaDialogOpen} onOpenChange={setIsAddIdeaDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>新しいアイデアを追加</DialogTitle>
+            <DialogDescription>
+              {getSectionLabel(selectedSectionForIdea)}にアイデアを追加します。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="idea-text">アイデア *</Label>
+              <Input
+                id="idea-text"
+                placeholder="アイデアを入力してください"
+                value={newIdeaText}
+                onChange={(e) => setNewIdeaText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleAddIdea();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsAddIdeaDialogOpen(false)}>
+              キャンセル
+            </Button>
+            <Button onClick={handleAddIdea}>
+              追加
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -18,7 +18,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import Link from "next/link";
-import { ArrowLeft, ArrowRight, GripVertical, Plus, X, Trash2 } from "lucide-react";
+import { ArrowLeft, ArrowRight, GripVertical, Plus, X, Trash2, Edit2, Check } from "lucide-react";
 import { getFormatByCategory, type FormatSection } from "@/lib/format-utils";
 
 interface Bullet {
@@ -53,6 +53,11 @@ export default function ProjectOrganizePage() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [newSectionName, setNewSectionName] = useState("");
   const [newSectionDescription, setNewSectionDescription] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingText, setEditingText] = useState("");
+  const [isAddIdeaDialogOpen, setIsAddIdeaDialogOpen] = useState(false);
+  const [selectedSectionForIdea, setSelectedSectionForIdea] = useState<string>("");
+  const [newIdeaText, setNewIdeaText] = useState("");
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -241,6 +246,57 @@ export default function ProjectOrganizePage() {
     });
   };
 
+  const startEditing = (bullet: Bullet) => {
+    setEditingId(bullet.id);
+    setEditingText(bullet.text);
+  };
+
+  const saveEdit = (sectionId: string) => {
+    if (editingText.trim() && editingId) {
+      const updatedBullets = (categorizedBullets[sectionId] || []).map(b => 
+        b.id === editingId ? { ...b, text: editingText.trim() } : b
+      );
+      setCategorizedBullets({
+        ...categorizedBullets,
+        [sectionId]: updatedBullets,
+      });
+      setEditingId(null);
+      setEditingText("");
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingText("");
+  };
+
+  const openAddIdeaDialog = (sectionId: string) => {
+    setSelectedSectionForIdea(sectionId);
+    setNewIdeaText("");
+    setIsAddIdeaDialogOpen(true);
+  };
+
+  const handleAddIdea = () => {
+    if (!newIdeaText.trim()) {
+      alert("アイデアを入力してください");
+      return;
+    }
+
+    const newBullet: Bullet = {
+      id: `temp-${Date.now()}`,
+      text: newIdeaText.trim(),
+    };
+
+    const updatedBullets = [...(categorizedBullets[selectedSectionForIdea] || []), newBullet];
+    setCategorizedBullets({
+      ...categorizedBullets,
+      [selectedSectionForIdea]: updatedBullets,
+    });
+
+    setNewIdeaText("");
+    setIsAddIdeaDialogOpen(false);
+  };
+
   const allSections = [
     ...sections.filter(s => !removedSectionIds.includes(s.id)),
     ...customSections
@@ -375,10 +431,22 @@ export default function ProjectOrganizePage() {
               <div className="lg:sticky lg:top-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">📝 未分類のアイデア</CardTitle>
-                    <CardDescription>
-                      以下のアイデアを右側のセクションにドラッグしてください
-                    </CardDescription>
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <CardTitle className="text-lg">📝 未分類のアイデア</CardTitle>
+                        <CardDescription>
+                          以下のアイデアを右側のセクションにドラッグしてください
+                        </CardDescription>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => openAddIdeaDialog('uncategorized')}
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        追加
+                      </Button>
+                    </div>
                   </CardHeader>
                   <CardContent>
                     <Droppable droppableId="uncategorized">
@@ -410,19 +478,66 @@ export default function ProjectOrganizePage() {
                                       >
                                         <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
                                       </div>
-                                      <span className="flex-1 text-sm">{bullet.text}</span>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleRemoveIdea('uncategorized', bullet.id);
-                                        }}
-                                        title="削除"
-                                      >
-                                        <Trash2 className="h-3 w-3 text-gray-500 hover:text-red-500" />
-                                      </Button>
+                                      {editingId === bullet.id ? (
+                                        <>
+                                          <Input
+                                            className="flex-1 h-8"
+                                            value={editingText}
+                                            onChange={(e) => setEditingText(e.target.value)}
+                                            onKeyDown={(e) => {
+                                              if (e.key === "Enter") saveEdit('uncategorized');
+                                              if (e.key === "Escape") cancelEdit();
+                                            }}
+                                            autoFocus
+                                          />
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={() => saveEdit('uncategorized')}
+                                            title="保存"
+                                          >
+                                            <Check className="h-3 w-3 text-green-600" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6"
+                                            onClick={cancelEdit}
+                                            title="キャンセル"
+                                          >
+                                            <X className="h-3 w-3 text-gray-500" />
+                                          </Button>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <span className="flex-1 text-sm">{bullet.text}</span>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              startEditing(bullet);
+                                            }}
+                                            title="編集"
+                                          >
+                                            <Edit2 className="h-3 w-3 text-gray-500" />
+                                          </Button>
+                                          <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleRemoveIdea('uncategorized', bullet.id);
+                                            }}
+                                            title="削除"
+                                          >
+                                            <Trash2 className="h-3 w-3 text-gray-500 hover:text-red-500" />
+                                          </Button>
+                                        </>
+                                      )}
                                     </div>
                                   )}
                                 </Draggable>
@@ -466,6 +581,14 @@ export default function ProjectOrganizePage() {
                       <Badge variant="outline">
                         {categorizedBullets[section.id]?.length || 0} 件
                       </Badge>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openAddIdeaDialog(section.id)}
+                        title="アイデアを追加"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -513,19 +636,66 @@ export default function ProjectOrganizePage() {
                                     >
                                       <GripVertical className="w-4 h-4 text-gray-400" />
                                     </div>
-                                    <span className="flex-1 text-sm">{bullet.text}</span>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleRemoveIdea(section.id, bullet.id);
-                                      }}
-                                      title="削除"
-                                    >
-                                      <Trash2 className="h-3 w-3 text-gray-500 hover:text-red-500" />
-                                    </Button>
+                                    {editingId === bullet.id ? (
+                                      <>
+                                        <Input
+                                          className="flex-1 h-8"
+                                          value={editingText}
+                                          onChange={(e) => setEditingText(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === "Enter") saveEdit(section.id);
+                                            if (e.key === "Escape") cancelEdit();
+                                          }}
+                                          autoFocus
+                                        />
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6"
+                                          onClick={() => saveEdit(section.id)}
+                                          title="保存"
+                                        >
+                                          <Check className="h-3 w-3 text-green-600" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6"
+                                          onClick={cancelEdit}
+                                          title="キャンセル"
+                                        >
+                                          <X className="h-3 w-3 text-gray-500" />
+                                        </Button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <span className="flex-1 text-sm">{bullet.text}</span>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            startEditing(bullet);
+                                          }}
+                                          title="編集"
+                                        >
+                                          <Edit2 className="h-3 w-3 text-gray-500" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleRemoveIdea(section.id, bullet.id);
+                                          }}
+                                          title="削除"
+                                        >
+                                          <Trash2 className="h-3 w-3 text-gray-500 hover:text-red-500" />
+                                        </Button>
+                                      </>
+                                    )}
                                   </div>
                                 )}
                               </Draggable>
@@ -556,6 +726,42 @@ export default function ProjectOrganizePage() {
           </Button>
         </div>
       </div>
+
+      {/* アイデア追加ダイアログ */}
+      <Dialog open={isAddIdeaDialogOpen} onOpenChange={setIsAddIdeaDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>新しいアイデアを追加</DialogTitle>
+            <DialogDescription>
+              {getSectionLabel(selectedSectionForIdea)}にアイデアを追加します。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="idea-text">アイデア *</Label>
+              <Input
+                id="idea-text"
+                placeholder="アイデアを入力してください"
+                value={newIdeaText}
+                onChange={(e) => setNewIdeaText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    handleAddIdea();
+                  }
+                }}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsAddIdeaDialogOpen(false)}>
+              キャンセル
+            </Button>
+            <Button onClick={handleAddIdea}>
+              追加
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
