@@ -18,7 +18,7 @@ export async function POST(
     }
 
     const { id } = await params;
-    const { structure } = await request.json();
+    const { structure, customSections, removedSectionIds } = await request.json();
 
     // プロジェクトが存在し、ユーザーが所有していることを確認
     const post = await prisma.post.findFirst({
@@ -35,13 +35,17 @@ export async function POST(
       );
     }
 
-    // structureフィールドを更新
+    // structureフィールドを更新（customSectionsとremovedSectionIdsも含める）
     await prisma.post.update({
       where: {
         id,
       },
       data: {
-        structure: structure,
+        structure: {
+          categorizedBullets: structure,
+          customSections: customSections || [],
+          removedSectionIds: removedSectionIds || [],
+        },
         updatedAt: new Date(),
       },
     });
@@ -86,7 +90,24 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ structure: post.structure });
+    // 後方互換性のため、既存の形式と新しい形式の両方に対応
+    const structureData = post.structure as any;
+    
+    // 新しい形式の場合
+    if (structureData && typeof structureData === 'object' && 'categorizedBullets' in structureData) {
+      return NextResponse.json({ 
+        structure: structureData.categorizedBullets,
+        customSections: structureData.customSections || [],
+        removedSectionIds: structureData.removedSectionIds || [],
+      });
+    }
+    
+    // 既存の形式の場合（後方互換性）
+    return NextResponse.json({ 
+      structure: structureData || {},
+      customSections: [],
+      removedSectionIds: [],
+    });
   } catch (error) {
     console.error("Get structure error:", error);
     return NextResponse.json(

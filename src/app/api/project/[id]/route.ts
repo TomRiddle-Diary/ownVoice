@@ -44,6 +44,7 @@ export async function GET(
       id: post.id,
       title: post.title,
       category: post.category,
+      targetLength: post.targetLength,
       content: post.content,
       structure: post.structure,
       bullets: post.bullets,

@@ -12,11 +12,9 @@ import Link from "next/link";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 
 const CATEGORIES = [
+  { value: "job-hunting", label: "就活" },
+  { value: "academic", label: "論文・レポート" },
   { value: "blog", label: "ブログ記事" },
-  { value: "proposal", label: "企画書・提案書" },
-  { value: "self-pr", label: "自己PR" },
-  { value: "essay", label: "エッセイ" },
-  { value: "report", label: "レポート" },
   { value: "other", label: "その他" },
 ];
 

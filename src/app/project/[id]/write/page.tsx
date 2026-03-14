@@ -10,11 +10,19 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
 import { ArrowLeft, Sparkles, Save, Eye, GripVertical } from "lucide-react";
-import { getFormatByTargetLength, type FormatSection } from "@/lib/format-utils";
+import { getFormatByCategory, type FormatSection } from "@/lib/format-utils";
 
 interface Bullet {
   id: string;
   text: string;
+}
+
+interface Project {
+  id: string;
+  title: string;
+  category: string;
+  targetLength: number;
+  content?: string;
 }
 
 type CategorizedBullets = { [sectionId: string]: Bullet[] };
@@ -25,15 +33,22 @@ export default function ProjectWritePage() {
   const projectId = params.id as string;
   const { data: session, status } = useSession();
   
+  const [project, setProject] = useState<Project | null>(null);
   const [structure, setStructure] = useState<CategorizedBullets>({});
   const [sections, setSections] = useState<FormatSection[]>([]);
+  const [customSections, setCustomSections] = useState<FormatSection[]>([]);
+  const [removedSectionIds, setRemovedSectionIds] = useState<string[]>([]);
   const [content, setContent] = useState("");
   const [feedback, setFeedback] = useState("");
   const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [projectTitle, setProjectTitle] = useState("");
   const [cursorPosition, setCursorPosition] = useState(0);
+
+  const allSections = [
+    ...sections.filter(s => !removedSectionIds.includes(s.id)),
+    ...customSections
+  ];
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -44,25 +59,35 @@ export default function ProjectWritePage() {
   const loadData = async () => {
     try {
       // プロジェクト情報を取得
-      const projectResponse = await fetch(`/api/project/${projectId}/structure`);
-      if (projectResponse.ok) {
-        const projectData = await projectResponse.json();
-        setStructure(projectData.structure || {});
-        
-        // フォーマットを設定
-        const format = getFormatByTargetLength(800);
-        setSections(format.sections);
+      const projectResponse = await fetch(`/api/project/${projectId}`);
+      if (!projectResponse.ok) {
+        const errorData = await projectResponse.json();
+        console.error("Project fetch error:", errorData);
+        throw new Error(`プロジェクト情報取得失敗: ${errorData.error || projectResponse.status}`);
       }
+      
+      const projectData = await projectResponse.json();
+      setProject(projectData);
+      setContent(projectData.content || "");
+      
+      // カテゴリに基づいてフォーマットを設定
+      const format = getFormatByCategory(
+        projectData.category || "other", 
+        projectData.targetLength || 800
+      );
+      setSections(format.sections);
 
-      // 既存の下書きを取得
-      const contentResponse = await fetch(`/api/project/${projectId}`);
-      if (contentResponse.ok) {
-        const contentData = await contentResponse.json();
-        setContent(contentData.content || "");
-        setProjectTitle(contentData.title || "無題");
+      // 構造化されたアイデアを取得
+      const structureResponse = await fetch(`/api/project/${projectId}/structure`);
+      if (structureResponse.ok) {
+        const structureData = await structureResponse.json();
+        setStructure(structureData.structure || {});
+        setCustomSections(structureData.customSections || []);
+        setRemovedSectionIds(structureData.removedSectionIds || []);
       }
     } catch (error) {
       console.error("Error loading data:", error);
+      alert("データの読み込みに失敗しました");
     } finally {
       setIsLoading(false);
     }
@@ -171,7 +196,7 @@ export default function ProjectWritePage() {
                 </Link>
               </Button>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">{projectTitle}</h1>
+                <h1 className="text-xl font-bold text-gray-900">{project?.title || "無題"}</h1>
                 <p className="text-xs text-gray-500">ステップ 4/4: 文章作成</p>
               </div>
               <Badge>下書き</Badge>
@@ -214,7 +239,7 @@ export default function ProjectWritePage() {
               </CardContent>
             </Card>
 
-            {sections.map((section) => {
+            {allSections.map((section) => {
               const bullets = structure[section.id] || [];
               if (bullets.length === 0) return null;
 
