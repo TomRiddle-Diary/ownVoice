@@ -506,7 +506,7 @@ export default function ProjectWritePage() {
                   onChange={(e) => setContent(e.target.value)}
                   onDragOver={handleDragOver}
                   onDrop={handleDrop}
-                  className="min-h-[500px] mb-4 font-sans"
+                  className="h-[calc(100vh-350px)] mb-4 font-sans resize-none"
                 />
                 <div className="flex gap-2">
                   <Button onClick={getFeedback} disabled={!content || isLoadingFeedback}>
