@@ -531,7 +531,12 @@ export default function ProjectReorderPage() {
                                 ) : (
                                   <div className="space-y-2">
                                     {categorizedBullets[section.id]?.map((bullet, bulletIndex) => (
-                                      <Draggable key={bullet.id} draggableId={bullet.id} index={bulletIndex}>
+                                      <Draggable 
+                                        key={bullet.id} 
+                                        draggableId={bullet.id} 
+                                        index={bulletIndex}
+                                        isDragDisabled={editingId === bullet.id}
+                                      >
                                         {(provided, snapshot) => (
                                           <div
                                             ref={provided.innerRef}
@@ -540,12 +545,16 @@ export default function ProjectReorderPage() {
                                               snapshot.isDragging ? "ring-2 ring-blue-500" : ""
                                             }`}
                                           >
-                                            <div
-                                              {...provided.dragHandleProps}
-                                              className="cursor-move"
-                                            >
-                                              <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                                            </div>
+                                            {editingId === bullet.id ? (
+                                              <div className="w-4 h-4 flex-shrink-0" />
+                                            ) : (
+                                              <div
+                                                {...provided.dragHandleProps}
+                                                className="cursor-move"
+                                              >
+                                                <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                              </div>
+                                            )}
                                             {editingId === bullet.id ? (
                                               <>
                                                 <Input

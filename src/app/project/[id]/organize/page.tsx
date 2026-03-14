@@ -465,19 +465,28 @@ export default function ProjectOrganizePage() {
                           ) : (
                             <div className="space-y-2">
                               {categorizedBullets['uncategorized']?.map((bullet, index) => (
-                                <Draggable key={bullet.id} draggableId={bullet.id} index={index}>
+                                <Draggable 
+                                  key={bullet.id} 
+                                  draggableId={bullet.id} 
+                                  index={index}
+                                  isDragDisabled={editingId === bullet.id}
+                                >
                                   {(provided) => (
                                     <div
                                       ref={provided.innerRef}
                                       {...provided.draggableProps}
                                       className="group flex items-center gap-2 p-3 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow"
                                     >
-                                      <div
-                                        {...provided.dragHandleProps}
-                                        className="cursor-move"
-                                      >
-                                        <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                                      </div>
+                                      {editingId === bullet.id ? (
+                                        <div className="w-4 h-4 flex-shrink-0" />
+                                      ) : (
+                                        <div
+                                          {...provided.dragHandleProps}
+                                          className="cursor-move"
+                                        >
+                                          <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                        </div>
+                                      )}
                                       {editingId === bullet.id ? (
                                         <>
                                           <Input
@@ -623,19 +632,28 @@ export default function ProjectOrganizePage() {
                         ) : (
                           <div className="space-y-2">
                             {categorizedBullets[section.id]?.map((bullet, index) => (
-                              <Draggable key={bullet.id} draggableId={bullet.id} index={index}>
+                              <Draggable 
+                                key={bullet.id} 
+                                draggableId={bullet.id} 
+                                index={index}
+                                isDragDisabled={editingId === bullet.id}
+                              >
                                 {(provided) => (
                                   <div
                                     ref={provided.innerRef}
                                     {...provided.draggableProps}
                                     className="group flex items-center gap-2 p-2 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow"
                                   >
-                                    <div
-                                      {...provided.dragHandleProps}
-                                      className="cursor-move"
-                                    >
-                                      <GripVertical className="w-4 h-4 text-gray-400" />
-                                    </div>
+                                    {editingId === bullet.id ? (
+                                      <div className="w-4 h-4" />
+                                    ) : (
+                                      <div
+                                        {...provided.dragHandleProps}
+                                        className="cursor-move"
+                                      >
+                                        <GripVertical className="w-4 h-4 text-gray-400" />
+                                      </div>
+                                    )}
                                     {editingId === bullet.id ? (
                                       <>
                                         <Input
