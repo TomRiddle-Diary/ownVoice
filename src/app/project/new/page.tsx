@@ -92,7 +92,7 @@ export default function NewProjectPage() {
             </Button>
             <div>
               <h1 className="text-xl font-bold text-gray-900">新規プロジェクト</h1>
-              <p className="text-xs text-gray-500">ステップ 1/4: 基本情報</p>
+              <p className="text-xs text-gray-500">ステップ 1/5: 基本情報</p>
             </div>
           </div>
         </div>

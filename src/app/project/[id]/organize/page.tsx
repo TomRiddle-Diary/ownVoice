@@ -252,8 +252,8 @@ export default function ProjectOrganizePage() {
         throw new Error("構造の保存に失敗しました");
       }
 
-      // 文章作成ページへ遷移
-      router.push(`/project/${projectId}/write`);
+      // 並び替えページへ遷移
+      router.push(`/project/${projectId}/reorder`);
     } catch (error) {
       console.error("Error saving structure:", error);
       alert("構造の保存に失敗しました");
@@ -284,7 +284,7 @@ export default function ProjectOrganizePage() {
               </Button>
               <div>
                 <h1 className="text-xl font-bold text-gray-900">アイデアの整理</h1>
-                <p className="text-xs text-gray-500">ステップ 3/4: カテゴライズ＆並べ替え</p>
+                <p className="text-xs text-gray-500">ステップ 3/5: アイデア分類</p>
               </div>
             </div>
             <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
@@ -348,7 +348,7 @@ export default function ProjectOrganizePage() {
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">手動でアイデアを整理</h3>
                 <p className="text-sm text-gray-600">
-                  未分類のアイデアを各セクションにドラッグ＆ドロップして整理してください。
+                  左側の未分類のアイデアを、右側の各セクションにドラッグ＆ドロップして整理してください。
                   各セクションは文章の構成に対応しています。自由に並べ替えて最適な構成を見つけましょう。
                 </p>
               </div>
@@ -357,50 +357,62 @@ export default function ProjectOrganizePage() {
         </Card>
 
         <DragDropContext onDragEnd={onDragEnd}>
-          <div className="grid lg:grid-cols-2 gap-6">
-            {/* 未分類のアイデア */}
-            {categorizedBullets['uncategorized']?.length > 0 && (
-              <Card className="lg:col-span-2">
-                <CardHeader>
-                  <CardTitle className="text-lg">📝 未分類のアイデア</CardTitle>
-                  <CardDescription>
-                    以下のアイデアを各セクションにドラッグしてください
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Droppable droppableId="uncategorized">
-                    {(provided, snapshot) => (
-                      <div
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                        className={`min-h-[100px] p-4 border-2 border-dashed rounded-lg ${
-                          snapshot.isDraggingOver ? "border-blue-500 bg-blue-50" : "border-gray-300"
-                        }`}
-                      >
-                        <div className="space-y-2">
-                          {categorizedBullets['uncategorized'].map((bullet, index) => (
-                            <Draggable key={bullet.id} draggableId={bullet.id} index={index}>
-                              {(provided) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                  className="flex items-center gap-2 p-3 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow"
-                                >
-                                  <GripVertical className="w-4 h-4 text-gray-400" />
-                                  <span className="flex-1 text-sm">{bullet.text}</span>
-                                </div>
-                              )}
-                            </Draggable>
-                          ))}
+          <div className="flex flex-col lg:flex-row gap-6">
+            {/* 左側：未分類のアイデア */}
+            <div className="w-full lg:w-1/2">
+              <div className="lg:sticky lg:top-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">📝 未分類のアイデア</CardTitle>
+                    <CardDescription>
+                      以下のアイデアを右側のセクションにドラッグしてください
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Droppable droppableId="uncategorized">
+                      {(provided, snapshot) => (
+                        <div
+                          {...provided.droppableProps}
+                          ref={provided.innerRef}
+                          className={`min-h-[200px] max-h-[400px] lg:max-h-[calc(100vh-300px)] overflow-y-auto p-4 border-2 border-dashed rounded-lg ${
+                            snapshot.isDraggingOver ? "border-blue-500 bg-blue-50" : "border-gray-300"
+                          }`}
+                        >
+                          {categorizedBullets['uncategorized']?.length === 0 ? (
+                            <p className="text-sm text-gray-500 text-center py-8">
+                              すべてのアイデアが分類されました！
+                            </p>
+                          ) : (
+                            <div className="space-y-2">
+                              {categorizedBullets['uncategorized']?.map((bullet, index) => (
+                                <Draggable key={bullet.id} draggableId={bullet.id} index={index}>
+                                  {(provided) => (
+                                    <div
+                                      ref={provided.innerRef}
+                                      {...provided.draggableProps}
+                                      {...provided.dragHandleProps}
+                                      className="flex items-center gap-2 p-3 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-move"
+                                    >
+                                      <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                      <span className="flex-1 text-sm">{bullet.text}</span>
+                                    </div>
+                                  )}
+                                </Draggable>
+                              ))}
+                            </div>
+                          )}
+                          {provided.placeholder}
                         </div>
-                        {provided.placeholder}
-                      </div>
-                    )}
-                  </Droppable>
-                </CardContent>
-              </Card>
-            )}
+                      )}
+                    </Droppable>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            {/* 右側：分類セクション */}
+            <div className="w-full lg:w-1/2">
+              <div className="space-y-6">
 
             {/* セクションごとのドロップエリア */}
             {allSections.map((section) => {
@@ -484,6 +496,8 @@ export default function ProjectOrganizePage() {
               </Card>
               );
             })}
+              </div>
+            </div>
           </div>
         </DragDropContext>
 

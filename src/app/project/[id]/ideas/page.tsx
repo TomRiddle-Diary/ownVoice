@@ -110,7 +110,7 @@ export default function ProjectIdeasPage() {
             </Button>
             <div>
               <h1 className="text-xl font-bold text-gray-900">アイデア・エピソード</h1>
-              <p className="text-xs text-gray-500">ステップ 2/4: 情報収集</p>
+              <p className="text-xs text-gray-500">ステップ 2/5: 情報収集</p>
             </div>
           </div>
         </div>
