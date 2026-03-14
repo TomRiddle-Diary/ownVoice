@@ -412,7 +412,12 @@ export default function ProjectWritePage() {
                       {bullets.map((bullet) => (
                         <li 
                           key={bullet.id} 
-                          className="flex items-center gap-2 text-sm p-3 rounded border border-transparent hover:border-blue-200 hover:bg-blue-50 transition-all group"
+                          className={`flex items-center gap-2 text-sm p-3 rounded border border-transparent hover:border-blue-200 hover:bg-blue-50 transition-all group ${
+                            editingId !== bullet.id ? "cursor-move" : ""
+                          }`}
+                          draggable={editingId !== bullet.id}
+                          onDragStart={(e) => editingId !== bullet.id && handleDragStart(e, bullet.text)}
+                          title={editingId !== bullet.id ? "ドラッグして右のエディタにドロップできます" : ""}
                         >
                           {editingId === bullet.id ? (
                             <>
@@ -447,16 +452,9 @@ export default function ProjectWritePage() {
                             </>
                           ) : (
                             <>
-                              <div 
-                                className="flex items-center gap-2 flex-1 cursor-move"
-                                draggable
-                                onDragStart={(e) => handleDragStart(e, bullet.text)}
-                                title="ドラッグして右のエディタにドロップできます"
-                              >
-                                <GripVertical className="w-4 h-4 text-gray-400 group-hover:text-blue-500 flex-shrink-0" />
-                                <span className="text-blue-500">•</span>
-                                <span className="flex-1">{bullet.text}</span>
-                              </div>
+                              <GripVertical className="w-4 h-4 text-gray-400 group-hover:text-blue-500 flex-shrink-0" />
+                              <span className="text-blue-500">•</span>
+                              <span className="flex-1">{bullet.text}</span>
                               <Button
                                 variant="ghost"
                                 size="icon"
